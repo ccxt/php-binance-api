@@ -5,3 +5,4 @@ vendor**
 .settings/**
 
 .DS_Store
+.idea
