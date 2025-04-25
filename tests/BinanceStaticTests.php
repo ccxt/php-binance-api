@@ -797,7 +797,7 @@ class BinanceStaticTests extends TestCase
 
     }
 
-    public function testSotAggTrades()
+    public function testSpotAggTrades()
     {
         try  {
             $this->binance->aggTrades($this->symbol);
@@ -805,7 +805,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/aggTrades?";
+        $endpoint = "https://api.binance.com/api/v3/aggTrades?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -862,7 +862,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/depth?";
+        $endpoint = "https://api.binance.com/api/v3/depth?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -941,7 +941,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/klines?";
+        $endpoint = "https://api.binance.com/api/v3/klines?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -952,7 +952,27 @@ class BinanceStaticTests extends TestCase
         $this->assertEquals($this->limit, $params['limit']);
         $this->assertEquals($this->startTime, $params['startTime']);
         $this->assertEquals($this->endTime, $params['endTime']);
+    }
 
+    public function testSpotUiCandlesticks()
+    {
+        try  {
+            $this->binance->uiCandlesticks($this->symbol, $this->interval, $this->limit, $this->startTime, $this->endTime);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/uiKlines?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->interval, $params['interval']);
+        $this->assertEquals($this->limit, $params['limit']);
+        $this->assertEquals($this->startTime, $params['startTime']);
+        $this->assertEquals($this->endTime, $params['endTime']);
     }
 
     public function testSpotAccountSnapshot()
