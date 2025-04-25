@@ -317,6 +317,24 @@ class BinanceLiveTests extends TestCase
         $this->assertIsNumeric($candle['takerBuyVolume']);
     }
 
+    public function testUiCandlesticksSpot()
+    {
+        $res = $this->spotBinance->uiCandlesticks($this->symbol, $this->interval, $this->limit);
+        $this->assertIsArray($res);
+        $candle = $res[0];
+        $this->assertIsInt($candle[0]); // Kline open time
+        $this->assertIsNumeric($candle[1]); // Open price
+        $this->assertIsNumeric($candle[2]); // High price
+        $this->assertIsNumeric($candle[3]); // Low price
+        $this->assertIsNumeric($candle[4]); // Close price
+        $this->assertIsNumeric($candle[5]); // Volume
+        $this->assertIsInt($candle[6]); // Kline close time
+        $this->assertIsNumeric($candle[7]); // Quote asset volume
+        $this->assertIsInt($candle[8]); // Number of trades
+        $this->assertIsNumeric($candle[9]); // Taker buy base asset volume
+        $this->assertIsNumeric($candle[10]); // Taker buy quote asset volume
+    }
+
     // could throw an error: https://github.com/ccxt/php-binance-api/actions/runs/14491775733/job/40649647274?pr=511
     // public function testSystemStatusSpot()
     // {
