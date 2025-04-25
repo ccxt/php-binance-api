@@ -148,7 +148,7 @@ class API
      * @param $file string file location
      * @return null
      */
-    protected function setupApiConfigFromFile(?string $file = null)
+    protected function setupApiConfigFromFile(string $file = null)
     {
         $file = is_null($file) ? getenv("HOME") . "/.config/jaggedsoft/php-binance-api.json" : $file;
 
@@ -174,7 +174,7 @@ class API
      * @param $file string file location
      * @return null
      */
-    protected function setupCurlOptsFromFile(?string $file = null)
+    protected function setupCurlOptsFromFile(string $file = null)
     {
         $file = is_null($file) ? getenv("HOME") . "/.config/jaggedsoft/php-binance-api.json" : $file;
 
@@ -197,7 +197,7 @@ class API
      *
      * @return null
      */
-    protected function setupProxyConfigFromFile(?string $file = null)
+    protected function setupProxyConfigFromFile(string $file = null)
     {
         $file = is_null($file) ? getenv("HOME") . "/.config/jaggedsoft/php-binance-api.json" : $file;
 
@@ -613,7 +613,7 @@ class API
      * @return array with error message or array of orderDetails array
      * @throws \Exception
      */
-    public function history(string $symbol, int $limit = 500, int $fromTradeId = -1, ?int $startTime = null, ?int $endTime = null, array $params = [])
+    public function history(string $symbol, int $limit = 500, int $fromTradeId = -1, int $startTime = null, int $endTime = null, array $params = [])
     {
         $request = [
             "symbol" => $symbol,
@@ -640,7 +640,7 @@ class API
      * @return array with error message or array of orderDetails array
      * @throws \Exception
      */
-    public function myTrades(string $symbol, int $limit = 500, int $fromTradeId = -1, ?int $startTime = null, ?int $endTime = null, array $params = [])
+    public function myTrades(string $symbol, int $limit = 500, int $fromTradeId = -1, int $startTime = null, int $endTime = null, array $params = [])
     {
         return $this->history($symbol, $limit, $fromTradeId, $startTime, $endTime, $params);
     }
@@ -664,6 +664,8 @@ class API
     /**
      * time Gets the server time
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
+     *
      * $time = $api->time();
      *
      * @return array with error message or array with server time key
@@ -677,7 +679,7 @@ class API
     /**
      * exchangeInfo -  Gets the complete exchange info, including limits, currency options etc.
      *
-     * @link https://binance-docs.github.io/apidocs/spot/en/#exchange-information
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
      *
      * $info = $api->exchangeInfo();
      * $info = $api->exchangeInfo('BTCUSDT');
@@ -953,7 +955,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function depositHistory(?string $asset = null, array $params = [])
+    public function depositHistory(string $asset = null, array $params = [])
     {
         $request = array();
         if (is_null($asset) === false) {
@@ -987,7 +989,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function withdrawHistory(?string $asset = null, array $params = [])
+    public function withdrawHistory(string $asset = null, array $params = [])
     {
         $request = array();
         if (is_null($asset) === false) {
@@ -1212,7 +1214,7 @@ class API
      * @return array with error message or array of prevDay change
      * @throws \Exception
      */
-    public function prevDay(?string $symbol = null, array $params = [])
+    public function prevDay(string $symbol = null, array $params = [])
     {
         $request = [];
         if (is_null($symbol) === false) {
@@ -1237,14 +1239,13 @@ class API
         $request = [
             "symbol" => $symbol,
         ];
-        return $this->tradesData($this->apiRequest("v1/aggTrades", "GET", array_merge($request, $params)));
+        return $this->tradesData($this->apiRequest("v3/aggTrades", "GET", array_merge($request, $params)));
     }
 
     /**
      * historicalTrades - Get historical trades for a specific currency
      *
-     * @link https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#old-trade-lookup-market_data
-     * @link https://binance-docs.github.io/apidocs/spot/en/#old-trade-lookup
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
      *
      * @property int $weight 5
      * Standard weight is 5 but if no tradeId is given, weight is 1
@@ -1278,6 +1279,8 @@ class API
     /**
      * depth get Market depth
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
      * $depth = $api->depth("ETHBTC");
      *
      * @param $symbol string the symbol to get the depth information for
@@ -1299,7 +1302,7 @@ class API
             "symbol" => $symbol,
             "limit" => $limit,
         ];
-        $json = $this->apiRequest("v1/depth", "GET", array_merge($request, $params));
+        $json = $this->apiRequest("v3/depth", "GET", array_merge($request, $params));
         if (is_array($json) === false) {
             echo "Error: unable to fetch depth" . PHP_EOL;
             $json = [];
@@ -1497,6 +1500,7 @@ class API
         }
         if ((!isset ($params['recvWindow'])) && (!is_null($this->recvWindow))) {
             $params['recvWindow'] = $this->recvWindow;
+            print_r($params);
         }
 
         $base = $this->base;
@@ -1829,6 +1833,8 @@ class API
      * candlesticks get the candles for the given intervals
      * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
      * $candles = $api->candlesticks("BNBBTC", "5m");
      *
      * @param $symbol market symbol to get the response for, e.g. ETHUSDT
@@ -1836,10 +1842,12 @@ class API
      * @param $limit int limit the amount of candles
      * @param $startTime string request candle information starting from here
      * @param $endTime string request candle information ending here
+     * @param $params array additional parameters
+     * - @param string $params['timeZone'] (optional) default is 0 (UTC) - time zone to use for the response
      * @return array containing the response
      * @throws \Exception
      */
-    public function candlesticks(string $symbol, string $interval = "5m", ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function candlesticks(string $symbol, string $interval = "5m", int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         if (!isset($this->charts[$symbol])) {
             $this->charts[$symbol] = [];
@@ -1862,20 +1870,62 @@ class API
             $request["endTime"] = $endTime;
         }
 
-        $response = $this->apiRequest("v1/klines", "GET", array_merge($request, $params));
+        $response = $this->apiRequest("v3/klines", "GET", array_merge($request, $params));
 
         if (is_array($response) === false) {
             return [];
         }
 
         if (count($response) === 0) {
-            echo "warning: v1/klines returned empty array, usually a blip in the connection or server" . PHP_EOL;
+            echo "warning: v3/klines returned empty array, usually a blip in the connection or server" . PHP_EOL;
             return [];
         }
 
         $ticks = $this->chartData($symbol, $interval, $response);
         $this->charts[$symbol][$interval] = $ticks;
         return $ticks;
+    }
+
+    /**
+     * uiCandlesticks return modified kline data, optimized for presentation of candlestick charts
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
+     * $candles = $api->uiCandlesticks("BNBBTC", "5m");
+     *
+     * @param $symbol market symbol to get the response for, e.g. ETHUSDT
+     * @param $interval string to request
+     * @param $limit int limit the amount of candles
+     * @param $startTime string request candle information starting from here
+     * @param $endTime string request candle information ending here
+     * @param $params array additional parameters
+     * - @param string $params['timeZone'] (optional) default is 0 (UTC) - time zone to use for the response
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function uiCandlesticks(string $symbol, string $interval = "5m", int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        $request = [
+            "symbol" => $symbol,
+            "interval" => $interval,
+        ];
+
+        if ($limit) {
+            $request["limit"] = $limit;
+        }
+
+        if ($startTime) {
+            $request["startTime"] = $startTime;
+        }
+
+        if ($endTime) {
+            $request["endTime"] = $endTime;
+        }
+
+        $response = $this->apiRequest("v3/uiKlines", "GET", array_merge($request, $params));
+
+        return $response;
     }
 
     /**
@@ -2267,7 +2317,7 @@ class API
      * @param $json array of the depth infomration
      * @return array of the depth information
      */
-    protected function depthData(string $symbol, array $json, ?string $product_type = null)
+    protected function depthData(string $symbol, array $json, string $product_type = null)
     {
         $bids = $asks = [];
         foreach ($json['bids'] as $obj) {
@@ -2672,7 +2722,7 @@ class API
      * @return null
      * @throws \Exception
      */
-    public function chart($symbols, string $interval = "30m", ?callable $callback = null, $limit = 500)
+    public function chart($symbols, string $interval = "30m", callable $callback = null, $limit = 500)
     {
         if (is_null($callback)) {
             throw new Exception("You must provide a valid callback");
@@ -2756,7 +2806,7 @@ class API
      * @return null
      * @throws \Exception
      */
-    public function kline($symbols, string $interval = "30m", ?callable $callback = null)
+    public function kline($symbols, string $interval = "30m", callable $callback = null)
     {
         if (is_null($callback)) {
             throw new Exception("You must provide a valid callback");
@@ -3104,7 +3154,7 @@ class API
     /**
      * systemStatus - Status indicator for api sapi
      *
-     * @link https://binance-docs.github.io/apidocs/spot/en/#test-connectivity
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
      * @link https://binance-docs.github.io/apidocs/spot/en/#system-status-system
      * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api
      *
@@ -3413,7 +3463,7 @@ class API
      * @return array with error message or array of market depth
      * @throws \Exception
      */
-    public function futuresDepth(string $symbol, ?int $limit = null, array $params = [])
+    public function futuresDepth(string $symbol, int $limit = null, array $params = [])
     {
         if (isset($symbol) === false || is_string($symbol) === false) {
             // WPCS: XSS OK.
@@ -3458,7 +3508,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresRecentTrades(string $symbol, ?int $limit = null, array $params = [])
+    public function futuresRecentTrades(string $symbol, int $limit = null, array $params = [])
     {
         $request = [
             'symbol' => $symbol,
@@ -3517,7 +3567,7 @@ class API
      * @return array with error message or array of market history
      * @throws \Exception
      */
-    public function futuresAggTrades(string $symbol, ?int $fromId = null, ?int $startTime = null, ?int $endTime = null, ?int $limit = null, array $params = [])
+    public function futuresAggTrades(string $symbol, int $fromId = null, int $startTime = null, int $endTime = null, int $limit = null, array $params = [])
     {
         $request = [
             'symbol' => $symbol,
@@ -3560,7 +3610,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresCandlesticks(string $symbol, string $interval = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, 'klines', null, $params);
     }
@@ -3589,7 +3639,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresContinuousCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, $contractType = 'PERPETUAL', array $params = [])
+    public function futuresContinuousCandlesticks(string $symbol, string $interval = '5m', int $limit = null, $startTime = null, $endTime = null, $contractType = 'PERPETUAL', array $params = [])
     {
         return $this->futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, 'continuousKlines', $contractType, $params);
     }
@@ -3617,7 +3667,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresIndexPriceCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresIndexPriceCandlesticks(string $symbol, string $interval = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, 'indexPriceKlines', null, $params);
     }
@@ -3645,7 +3695,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresMarkPriceCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresMarkPriceCandlesticks(string $symbol, string $interval = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, 'markPriceKlines', null, $params);
     }
@@ -3673,7 +3723,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresPremiumIndexCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresPremiumIndexCandlesticks(string $symbol, string $interval = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, 'premiumIndexKlines', null, $params);
     }
@@ -3747,7 +3797,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresMarkPrice(?string $symbol = null, array $params = [])
+    public function futuresMarkPrice(string $symbol = null, array $params = [])
     {
         $request = [];
         if ($symbol) {
@@ -3772,7 +3822,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresFundingRateHistory(?string $symbol = null, ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresFundingRateHistory(string $symbol = null, int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         $request = [];
         if ($symbol) {
@@ -3823,7 +3873,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresPrevDay(?string $symbol = null, array $params = [])
+    public function futuresPrevDay(string $symbol = null, array $params = [])
     {
         $request = [];
         if ($symbol) {
@@ -3936,7 +3986,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresSymbolOrderBookTicker(?string $symbol = null, array $params = []): array
+    public function futuresSymbolOrderBookTicker(string $symbol = null, array $params = []): array
     {
         $request = [];
         if ($symbol) {
@@ -4026,7 +4076,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresOpenInterestHistory(string $symbol, string $period = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresOpenInterestHistory(string $symbol, string $period = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->sapieriodLimitStartEndFuturesDataRequest($symbol, $period, $limit, $startTime, $endTime, 'openInterestHist', $params);
     }
@@ -4047,7 +4097,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresTopLongShortPositionRatio(string $symbol, string $period = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresTopLongShortPositionRatio(string $symbol, string $period = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->sapieriodLimitStartEndFuturesDataRequest($symbol, $period, $limit, $startTime, $endTime, 'topLongShortPositionRatio', $params);
     }
@@ -4068,7 +4118,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresTopLongShortAccountRatio(string $symbol, string $period = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresTopLongShortAccountRatio(string $symbol, string $period = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->sapieriodLimitStartEndFuturesDataRequest($symbol, $period, $limit, $startTime, $endTime, 'topLongShortAccountRatio', $params);
     }
@@ -4089,7 +4139,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresGlobalLongShortAccountRatio(string $symbol, string $period = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresGlobalLongShortAccountRatio(string $symbol, string $period = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->sapieriodLimitStartEndFuturesDataRequest($symbol, $period, $limit, $startTime, $endTime, 'globalLongShortAccountRatio', $params);
     }
@@ -4110,7 +4160,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresTakerLongShortRatio(string $symbol, string $period = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    public function futuresTakerLongShortRatio(string $symbol, string $period = '5m', int $limit = null, $startTime = null, $endTime = null, array $params = [])
     {
         return $this->sapieriodLimitStartEndFuturesDataRequest($symbol, $period, $limit, $startTime, $endTime, 'takerlongshortRatio', $params);
     }
@@ -4191,7 +4241,7 @@ class API
      * @return array containing the response
      * @throws \Exception
      */
-    public function futuresAssetIndex(?string $symbol = null, array $params = [])
+    public function futuresAssetIndex(string $symbol = null, array $params = [])
     {
         $request = [];
         if ($symbol) {
@@ -5674,7 +5724,7 @@ class API
      * futuresDownloadId
      * helper for other metods for getting download id
      */
-    protected function futuresDownloadId($startTime, $endTime, ?array $params = null, string $url = '')
+    protected function futuresDownloadId($startTime, $endTime, array $params = null, string $url = '')
     {
         $request = [
             'startTime' => $startTime,
@@ -5688,7 +5738,7 @@ class API
      * futuresDownloadLinkByDownloadId
      * helper for other metods for getting download link by download id
      */
-    protected function futuresDownloadLinkByDownloadId(string $downloadId, ?array $params = null, string $url = '')
+    protected function futuresDownloadLinkByDownloadId(string $downloadId, array $params = null, string $url = '')
     {
         $request = [
             'downloadId' => $downloadId,
