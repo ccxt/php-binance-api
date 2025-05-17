@@ -123,6 +123,66 @@ class BinanceStaticTests extends TestCase
         $this->assertTrue(str_starts_with($params['newClientOrderId'], $this->SPOT_ORDER_PREFIX));
     }
 
+    public function testSpotSorOrder()
+    {
+        try  {
+            $this->binance->sorOrder('BUY', 'BTCUSDT', 1, 1000);
+        } catch(\Throwable $e) {
+
+        }
+        $this->assertEquals("https://api.binance.com/api/v3/sor/order", self::$capturedUrl);
+
+        parse_str(self::$capturedBody, $params);
+
+        $this->assertEquals("BTCUSDT", $params['symbol']);
+        $this->assertEquals("BUY", $params['side']);
+        $this->assertEquals("LIMIT", $params['type']);
+        $this->assertEquals(1, $params['quantity']);
+        $this->assertEquals(1000, $params['price']);
+        $this->assertEquals("GTC", $params['timeInForce']);
+        $this->assertTrue(str_starts_with($params['newClientOrderId'], $this->SPOT_ORDER_PREFIX));
+    }
+
+    public function testSpotReplaceOrder()
+    {
+        try  {
+            $this->binance->replaceOrder('BUY', 'BTCUSDT', 1, 1000, 'LIMIT', '123456789');
+        } catch(\Throwable $e) {
+
+        }
+        $this->assertEquals("https://api.binance.com/api/v3/order/cancelReplace", self::$capturedUrl);
+
+        parse_str(self::$capturedBody, $params);
+
+        $this->assertEquals("BTCUSDT", $params['symbol']);
+        $this->assertEquals("BUY", $params['side']);
+        $this->assertEquals("LIMIT", $params['type']);
+        $this->assertEquals(1, $params['quantity']);
+        $this->assertEquals(1000, $params['price']);
+        $this->assertEquals("GTC", $params['timeInForce']);
+        $this->assertEquals('123456789', $params['cancelOrderId']);
+        $this->assertTrue(str_starts_with($params['newClientOrderId'], $this->SPOT_ORDER_PREFIX));
+    }
+
+    public function testSpotEditOrder()
+    {
+        try  {
+            $this->binance->editOrder('ETHUSDT', 0.009, '123456789');
+        } catch(\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/order/amend/keepPriority?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals("ETHUSDT", $params['symbol']);
+        $this->assertEquals(0.009, $params['newQty']);
+        $this->assertEquals('123456789', $params['orderId']);
+        $this->assertTrue(str_starts_with($params['newClientOrderId'], $this->SPOT_ORDER_PREFIX));
+    }
+
     public function testSpotBuy()
     {
         try  {
@@ -787,17 +847,51 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/ticker/24hr?";
+        $endpoint = "https://api.binance.com/api/v3/ticker/24hr?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
         parse_str($queryString, $params);
 
         $this->assertEquals($this->symbol, $params['symbol']);
-
     }
 
-    public function testSotAggTrades()
+    public function testSpotTradingDay()
+    {
+        try  {
+            $this->binance->tradingDay(null, $this->symbols);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/ticker/tradingDay?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals(json_encode($this->symbols), $params['symbols']);
+    }
+
+    public function testSpotRollingWindowPriceChange()
+    {
+        try  {
+            $this->binance->rollingWindowPriceChange($this->symbol, null, '2d');
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/ticker?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals('2d', $params['windowSize']);
+    }
+
+    public function testSpotAggTrades()
     {
         try  {
             $this->binance->aggTrades($this->symbol);
@@ -805,7 +899,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/aggTrades?";
+        $endpoint = "https://api.binance.com/api/v3/aggTrades?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -862,7 +956,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/depth?";
+        $endpoint = "https://api.binance.com/api/v3/depth?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -941,7 +1035,7 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $endpoint = "https://api.binance.com/api/v1/klines?";
+        $endpoint = "https://api.binance.com/api/v3/klines?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
@@ -952,7 +1046,27 @@ class BinanceStaticTests extends TestCase
         $this->assertEquals($this->limit, $params['limit']);
         $this->assertEquals($this->startTime, $params['startTime']);
         $this->assertEquals($this->endTime, $params['endTime']);
+    }
 
+    public function testSpotUiCandlesticks()
+    {
+        try  {
+            $this->binance->uiCandlesticks($this->symbol, $this->interval, $this->limit, $this->startTime, $this->endTime);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/uiKlines?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->interval, $params['interval']);
+        $this->assertEquals($this->limit, $params['limit']);
+        $this->assertEquals($this->startTime, $params['startTime']);
+        $this->assertEquals($this->endTime, $params['endTime']);
     }
 
     public function testSpotAccountSnapshot()
@@ -995,6 +1109,82 @@ class BinanceStaticTests extends TestCase
         $this->assertEquals($this->endTime, $params['endTime']);
         $this->assertEquals($this->nbrDays, $params['limit']);
 
+    }
+
+    public function testPreventedMatches()
+    {
+        try  {
+            $this->binance->preventedMatches($this->symbol, null, $this->orderId);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/myPreventedMatches?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->orderId, $params['orderId']);
+
+    }
+
+    public function testAllocations()
+    {
+        try  {
+            $this->binance->allocations($this->symbol, $this->startTime, $this->endTime, $this->fromId, $this->limit, $this->orderId);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/myAllocations?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->startTime, $params['startTime']);
+        $this->assertEquals($this->endTime, $params['endTime']);
+        $this->assertEquals($this->fromId, $params['fromAllocationId']);
+        $this->assertEquals($this->limit, $params['limit']);
+        $this->assertEquals($this->orderId, $params['orderId']);
+    }
+
+    public function testCommissionRate()
+    {
+        try  {
+            $this->binance->commissionRate($this->symbol);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/account/commission?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+    }
+
+    public function testOrderAmendments()
+    {
+        try  {
+            $this->binance->orderAmendments($this->symbol, $this->orderId);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/order/amendments?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->orderId, $params['orderId']);
     }
 
     public function testFuturesAccountSnapshot()
@@ -2589,6 +2779,23 @@ class BinanceStaticTests extends TestCase
 
         }
         $endpoint = "https://fapi.binance.com/fapi/v1/rateLimit/order?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->recvWindow, $params['recvWindow']);
+    }
+
+    public function testOrderRateLimit()
+    {
+        try  {
+            $this->binance->orderRateLimit([ 'recvWindow' => $this->recvWindow ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://api.binance.com/api/v3/rateLimit/order?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));

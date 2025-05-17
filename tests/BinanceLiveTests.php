@@ -238,6 +238,72 @@ class BinanceLiveTests extends TestCase
         $this->assertIsInt($res['count']);
     }
 
+    public function testTradingDaySpot()
+    {
+        $res = $this->spotBinance->tradingDay($this->symbol);
+        $this->assertIsArray($res);
+        $this->assertEquals($this->symbol, $res['symbol']);
+        $this->assertArrayHasKey('priceChange', $res);
+        $this->assertIsNumeric($res['priceChange']);
+        $this->assertArrayHasKey('priceChangePercent', $res);
+        $this->assertIsNumeric($res['priceChangePercent']);
+        $this->assertArrayHasKey('weightedAvgPrice', $res);
+        $this->assertIsNumeric($res['weightedAvgPrice']);
+        $this->assertArrayHasKey('openPrice', $res);
+        $this->assertIsNumeric($res['openPrice']);
+        $this->assertArrayHasKey('highPrice', $res);
+        $this->assertIsNumeric($res['highPrice']);
+        $this->assertArrayHasKey('lowPrice', $res);
+        $this->assertIsNumeric($res['lowPrice']);
+        $this->assertArrayHasKey('volume', $res);
+        $this->assertIsNumeric($res['volume']);
+        $this->assertArrayHasKey('quoteVolume', $res);
+        $this->assertIsNumeric($res['quoteVolume']);
+        $this->assertArrayHasKey('openTime', $res);
+        $this->assertIsInt($res['openTime']);
+        $this->assertArrayHasKey('closeTime', $res);
+        $this->assertIsInt($res['closeTime']);
+        $this->assertArrayHasKey('firstId', $res);
+        $this->assertIsInt($res['firstId']);
+        $this->assertArrayHasKey('lastId', $res);
+        $this->assertIsInt($res['lastId']);
+        $this->assertArrayHasKey('count', $res);
+        $this->assertIsInt($res['count']);
+    }
+
+    public function testRollingWindowPriceChangeSpot()
+    {
+        $res = $this->spotBinance->rollingWindowPriceChange($this->symbol, null, '3m');
+        $this->assertIsArray($res);
+        $this->assertEquals($this->symbol, $res['symbol']);
+        $this->assertArrayHasKey('priceChange', $res);
+        $this->assertIsNumeric($res['priceChange']);
+        $this->assertArrayHasKey('priceChangePercent', $res);
+        $this->assertIsNumeric($res['priceChangePercent']);
+        $this->assertArrayHasKey('weightedAvgPrice', $res);
+        $this->assertIsNumeric($res['weightedAvgPrice']);
+        $this->assertArrayHasKey('openPrice', $res);
+        $this->assertIsNumeric($res['openPrice']);
+        $this->assertArrayHasKey('highPrice', $res);
+        $this->assertIsNumeric($res['highPrice']);
+        $this->assertArrayHasKey('lowPrice', $res);
+        $this->assertIsNumeric($res['lowPrice']);
+        $this->assertArrayHasKey('volume', $res);
+        $this->assertIsNumeric($res['volume']);
+        $this->assertArrayHasKey('quoteVolume', $res);
+        $this->assertIsNumeric($res['quoteVolume']);
+        $this->assertArrayHasKey('openTime', $res);
+        $this->assertIsInt($res['openTime']);
+        $this->assertArrayHasKey('closeTime', $res);
+        $this->assertIsInt($res['closeTime']);
+        $this->assertArrayHasKey('firstId', $res);
+        $this->assertIsInt($res['firstId']);
+        $this->assertArrayHasKey('lastId', $res);
+        $this->assertIsInt($res['lastId']);
+        $this->assertArrayHasKey('count', $res);
+        $this->assertIsInt($res['count']);
+    }
+
     public function testAggTradesSpot()
     {
         $res = $this->spotBinance->aggTrades($this->symbol);
@@ -317,6 +383,24 @@ class BinanceLiveTests extends TestCase
         $this->assertIsNumeric($candle['takerBuyVolume']);
     }
 
+    public function testUiCandlesticksSpot()
+    {
+        $res = $this->spotBinance->uiCandlesticks($this->symbol, $this->interval, $this->limit);
+        $this->assertIsArray($res);
+        $candle = $res[0];
+        $this->assertIsInt($candle[0]); // Kline open time
+        $this->assertIsNumeric($candle[1]); // Open price
+        $this->assertIsNumeric($candle[2]); // High price
+        $this->assertIsNumeric($candle[3]); // Low price
+        $this->assertIsNumeric($candle[4]); // Close price
+        $this->assertIsNumeric($candle[5]); // Volume
+        $this->assertIsInt($candle[6]); // Kline close time
+        $this->assertIsNumeric($candle[7]); // Quote asset volume
+        $this->assertIsInt($candle[8]); // Number of trades
+        $this->assertIsNumeric($candle[9]); // Taker buy base asset volume
+        $this->assertIsNumeric($candle[10]); // Taker buy quote asset volume
+    }
+
     // could throw an error: https://github.com/ccxt/php-binance-api/actions/runs/14491775733/job/40649647274?pr=511
     // public function testSystemStatusSpot()
     // {
@@ -339,6 +423,60 @@ class BinanceLiveTests extends TestCase
     {
         $res = $this->spotBinance->avgPrice($this->symbol);
         $this->assertIsNumeric($res);
+    }
+
+    public function testPreventedMatchesSpot()
+    {
+        $res = $this->spotBinance->preventedMatches($this->symbol, null, '0123456789');
+        $this->assertIsArray($res);
+    }
+
+    public function testCommissionRateSpot()
+    {
+        $res = $this->spotBinance->commissionRate($this->symbol);
+        $this->assertIsArray($res);
+        $this->assertArrayHasKey('symbol', $res);
+        $this->assertEquals($this->symbol, $res['symbol']);
+        $this->assertArrayHasKey('standardCommission', $res);
+
+        $standardCommission = $res['standardCommission'];
+        $this->assertIsArray($standardCommission);
+        $this->assertArrayHasKey('maker', $standardCommission);
+        $this->assertIsNumeric($standardCommission['maker']);
+        $this->assertArrayHasKey('taker', $standardCommission);
+        $this->assertIsNumeric($standardCommission['taker']);
+        $this->assertArrayHasKey('buyer', $standardCommission);
+        $this->assertIsNumeric($standardCommission['buyer']);
+        $this->assertArrayHasKey('seller', $standardCommission);
+        $this->assertIsNumeric($standardCommission['seller']);
+
+        $this->assertArrayHasKey('taxCommission', $res);
+        $taxCommission = $res['taxCommission'];
+        $this->assertIsArray($taxCommission);
+        $this->assertArrayHasKey('maker', $taxCommission);
+        $this->assertIsNumeric($taxCommission['maker']);
+        $this->assertArrayHasKey('taker', $taxCommission);
+        $this->assertIsNumeric($taxCommission['taker']);
+        $this->assertArrayHasKey('buyer', $taxCommission);
+        $this->assertIsNumeric($taxCommission['buyer']);
+        $this->assertArrayHasKey('seller', $taxCommission);
+
+        $this->assertArrayHasKey('discount', $res);
+        $discount = $res['discount'];
+        $this->assertIsArray($discount);
+        $this->assertArrayHasKey('enabledForAccount', $discount);
+        $this->assertIsBool($discount['enabledForAccount']);
+        $this->assertArrayHasKey('enabledForSymbol', $discount);
+        $this->assertIsBool($discount['enabledForSymbol']);
+        $this->assertArrayHasKey('discountAsset', $discount);
+        $this->assertArrayHasKey('discount', $discount);
+        $this->assertIsNumeric($discount['discount']);
+    }
+
+    public function testAllocationsSpot()
+    {
+        $res = $this->spotBinance->allocations($this->symbol);
+        $this->assertIsArray($res);
     }
 
     public function testTimeFutures()
@@ -1291,6 +1429,22 @@ class BinanceLiveTests extends TestCase
     public function testOrderRateLimitFutures()
     {
         $res = $this->futuresBinance->futuresOrderRateLimit();
+        $this->assertIsArray($res);
+        $firstEntry = $res[0];
+        $this->assertIsArray($firstEntry);
+        $this->assertArrayHasKey('rateLimitType', $firstEntry);
+        $this->assertEquals('ORDERS', $firstEntry['rateLimitType']);
+        $this->assertArrayHasKey('interval', $firstEntry);
+        $this->assertIsString($firstEntry['interval']);
+        $this->assertArrayHasKey('intervalNum', $firstEntry);
+        $this->assertIsNumeric($firstEntry['intervalNum']);
+        $this->assertArrayHasKey('limit', $firstEntry);
+        $this->assertIsInt($firstEntry['limit']);
+    }
+
+    public function testOrderRateLimitSpot()
+    {
+        $res = $this->spotBinance->orderRateLimit();
         $this->assertIsArray($res);
         $firstEntry = $res[0];
         $this->assertIsArray($firstEntry);

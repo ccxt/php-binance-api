@@ -494,59 +494,79 @@ class API
 
     /**
      * cancel attempts to cancel a currency order
+     * either orderid or origClientOrderId is mandatory
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#cancel-order-trade
      *
      * $orderid = "123456789";
      * $order = $api->cancel("BNBBTC", $orderid);
      *
-     * @param $symbol string the currency symbol
-     * @param $orderid string the orderid to cancel
-     * @param $params array of optional options like ["side"=>"sell"]
+     * @param string $symbol (mandatory) the currency symbol
+     * @param string $orderid (optional) the orderid to fetch (mandatory if $params['origClientOrderId'] is not provided)
+     * @param array $params an array of additional parameters that the API endpoint allows
+     * - @param string $params['origClientOrderId'] optional the original client order id (mandatory if $orderid is not provided)
+     * - @param string $params['cancelRestrictions'] optional ONLY_NEW (cancel will succeed if the order status is NEW) or ONLY_PARTIALLY_FILLED (cancel will succeed if the order status is PARTIALLY_FILLED)
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function cancel(string $symbol, string $orderid, $params = [])
+    public function cancel(string $symbol, ?string $orderid = null, $params = [])
     {
         $request = [
             "symbol" => $symbol,
-            "orderId" => $orderid,
         ];
+        if (!is_null($orderid)) {
+            $request["orderId"] = $orderid;
+        } else if (!is_set($params['origClientOrderId'])) {
+            throw new Exception("Either orderId or origClientOrderId must be provided");
+        }
         return $this->apiRequest("v3/order", "DELETE", array_merge($request, $params), true);
     }
 
     /**
      * orderStatus attempts to get orders status
+     * either orderid or origClientOrderId is mandatory
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#query-order-user_data
      *
      * $orderid = "123456789";
      * $order = $api->orderStatus("BNBBTC", $orderid);
      *
-     * @param $symbol string the currency symbol
-     * @param $orderid string the orderid to fetch
+     * @param string $symbol (mandatory) the currency symbol
+     * @param string $orderid (optional) the orderid to fetch (mandatory if $params['origClientOrderId'] is not provided)
+     * @param array $params an array of additional parameters that the API endpoint allows
+     * - @param string $params['origClientOrderId'] optional the original client order id (mandatory if $orderid is not provided)
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function orderStatus(string $symbol, string $orderid, array $params = [])
+    public function orderStatus(string $symbol, ?string $orderid = null, array $params = [])
     {
         $request = [
             "symbol" => $symbol,
-            "orderId" => $orderid,
         ];
+        if (!is_null($orderid)) {
+            $request["orderId"] = $orderid;
+        } else if (!is_set($params['origClientOrderId'])) {
+            throw new Exception("Either orderId or origClientOrderId must be provided");
+        }
         return $this->apiRequest("v3/order", "GET", array_merge($request, $params), true);
     }
 
     /**
      * openOrders attempts to get open orders for all currencies or a specific currency
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#current-open-orders-user_data
+     *
      * $allOpenOrders = $api->openOrders();
      * $allBNBOrders = $api->openOrders( "BNBBTC" );
      *
-     * @param $symbol string the currency symbol
+     * @param string $symbol (optional) the market symbol
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function openOrders($symbol = null, array $params = [])
+    public function openOrders(?string $symbol = null, array $params = [])
     {
         $request = [];
-        if (is_null($symbol) != true) {
+        if (!is_null($symbol)) {
             $request = [
                 "symbol" => $symbol,
             ];
@@ -555,42 +575,47 @@ class API
     }
 
     /**
-     * Cancel all open orders method
+     * cancelOpenOrders - Cancel all open orders method
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#cancel-all-open-orders-on-a-symbol-trade
+     *
      * $api->cancelOpenOrders( "BNBBTC" );
-     * @param $symbol string the currency symbol
+     * @param string $symbol (mandatory) the merket symbol
+     * @param array $params (optional) an array of additional parameters that the API endpoint allows
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function cancelOpenOrders($symbol = null, array $params = [])
+    public function cancelOpenOrders(string $symbol, array $params = [])
     {
-        $request = [];
-        if (is_null($symbol) != true) {
-            $request = [
-                "symbol" => $symbol,
-            ];
-        }
+        $request = [
+            "symbol" => $symbol,
+        ];
         return $this->apiRequest("v3/openOrders", "DELETE", array_merge($request, $params), true);
     }
 
     /**
      * orders attempts to get the orders for all or a specific currency
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#all-orders-user_data
+     *
      * $allBNBOrders = $api->orders( "BNBBTC" );
      *
-     * @param $symbol string the currency symbol
-     * @param $limit int the amount of orders returned
-     * @param $fromOrderId string return the orders from this order onwards
-     * @param $params array optional startTime, endTime parameters
+     * @param string $symbol (mandatory) the currency symbol
+     * @param int $limit (optional) the amount of orders returned (default 500, max 1000)
+     * @param string $fromOrderId (optional) return the orders from this order onwards
+     * @param array $params (optional) an array of additional parameters that the API endpoint allows
      * @return array with error message or array of orderDetails array
      * @throws \Exception
      */
-    public function orders(string $symbol, int $limit = 500, int $fromOrderId = 0, array $params = [])
+    public function orders(string $symbol, ?int $limit = null, int $fromOrderId = null, array $params = [])
     {
         $request = [
             "symbol" => $symbol,
-            "limit" => $limit,
         ];
-        if ($fromOrderId) {
+        if (!is_null($limit)) {
+            $request["limit"] = $limit;
+        }
+        if (!is_null($fromOrderId)) {
             $request["orderId"] = $fromOrderId;
         }
         return $this->apiRequest("v3/allOrders", "GET", array_merge($request, $params), true);
@@ -648,6 +673,8 @@ class API
     /**
      * useServerTime adds the 'useServerTime'=>true to the API request to avoid time errors
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
+     *
      * $api->useServerTime();
      *
      * @return null
@@ -664,6 +691,8 @@ class API
     /**
      * time Gets the server time
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
+     *
      * $time = $api->time();
      *
      * @return array with error message or array with server time key
@@ -677,7 +706,7 @@ class API
     /**
      * exchangeInfo -  Gets the complete exchange info, including limits, currency options etc.
      *
-     * @link https://binance-docs.github.io/apidocs/spot/en/#exchange-information
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
      *
      * $info = $api->exchangeInfo();
      * $info = $api->exchangeInfo('BTCUSDT');
@@ -1146,6 +1175,8 @@ class API
     /**
      * prices get all the current prices
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints#symbol-price-ticker
+     *
      * $ticker = $api->prices();
      *
      * @return array with error message or array of all the currencies prices
@@ -1158,6 +1189,8 @@ class API
 
     /**
      * price get the latest price of a symbol
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints#symbol-price-ticker
      *
      * $price = $api->price( "ETHBTC" );
      *
@@ -1206,9 +1239,13 @@ class API
     /**
      * prevDay get 24hr ticker price change statistics for symbols
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
      * $prevDay = $api->prevDay("BNBBTC");
      *
-     * @param $symbol (optional) symbol to get the previous day change for
+     * @param string $symbol (optional) symbol to get the previous day change for
+     * @param array $params (optional) an array of additional parameters that the API endpoint allows
+     * - @param array  $params['symbols'] (optional) the symbols to get the previous day change for (e.g. ["BNBBTC","ETHBTC"])
      * @return array with error message or array of prevDay change
      * @throws \Exception
      */
@@ -1220,11 +1257,85 @@ class API
                 'symbol' => $symbol,
             ];
         }
-        return $this->apiRequest("v1/ticker/24hr", "GET", array_merge($request, $params));
+        $symbols = [];
+        if (isset($params['symbols'])) {
+            $symbols = $params['symbols'];
+            unset($params['symbols']);
+        }
+        if (!empty($symbols)) {
+            $request['symbols'] = json_encode($symbols);
+        }
+        return $this->apiRequest("v3/ticker/24hr", "GET", array_merge($request, $params));
+    }
+
+    /**
+     * tradingDay get 24hr ticker price change statistics for symbols
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
+     * $tradingDay = $api->tradingDay("BNBBTC");
+     * $tradingDay = $api->tradingDay(null, ["BNBBTC","ETHBTC"]);
+     *
+     * @param string $symbol (optional) symbol to get the info for - mandatory if symbols is not set
+     * @param array  $symbols (optional) the symbols to get the info for (e.g. ["BNBBTC","ETHBTC"]) - mandatory if symbol is not set
+     * @param array  $params (optional) an array of additional parameters that the API endpoint allows
+     * - @param string $params['timeZone'] (optional) default is 0 (UTC) - time zone to use for the response
+     * - @param string $params['type'] (optional) FULL or MINI - the format of the response (default is FULL)
+     * @return array with error message or array of prevDay change
+     * @throws \Exception
+     */
+    public function tradingDay(?string $symbol = null, ?array $symbols = null, array $params = [])
+    {
+        $request = [];
+        if (!is_null($symbol) && is_string($symbol)) {
+            $request['symbol'] = $symbol;
+        } elseif (is_array($symbols) && !empty($symbols)) {
+            $request['symbols'] = json_encode($symbols);
+        } else {
+            throw new \Exception("tradingDay(): Either symbol or symbols must be set");
+        }
+        return $this->apiRequest("v3/ticker/tradingDay", "GET", array_merge($request, $params));
+    }
+
+    /**
+     * rollingWindowPriceChange get ticker price change statistics for symbols for a rolling window
+     * - 1m, 2m... 59m for minutes
+     * - 1h, 2h... 23h - for hours
+     * - 1d.. 7d - for days
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
+     * $priceChange = $api->rollingWindowPriceChange("BNBBTC");
+     * $priceChange = $api->rollingWindowPriceChange(null, ["BNBBTC","ETHBTC"], '2d');
+     *
+     * @param string $symbol (optional) symbol to get the info for - mandatory if symbols is not set
+     * @param array  $symbols (optional) the symbols to get the info for (e.g. ["BNBBTC","ETHBTC"]) - mandatory if symbol is not set
+     * @param string $windowSize (optional) the size of the rolling window (e.g. 1m, 2m, 1h, 2h, 1d, 2d) - default is 1d
+     * @param array  $params (optional) an array of additional parameters that the API endpoint allows
+     * - @param string $params['type'] (optional) FULL or MINI - the format of the response (default is FULL)
+     * @return array with error message or array of prevDay change
+     * @throws \Exception
+     */
+    public function rollingWindowPriceChange(?string $symbol = null, array $symbols = null, string $windowSize = null, array $params = [])
+    {
+        $request = [];
+        if (!is_null($symbol) && is_string($symbol)) {
+            $request['symbol'] = $symbol;
+        } elseif (is_array($symbols) && !empty($symbols)) {
+            $request['symbols'] = json_encode($symbols);
+        } else {
+            throw new \Exception("rollingWindowPriceChange(): Either symbol or symbols must be set");
+        }
+        if (!is_null($windowSize)) {
+            $request['windowSize'] = $windowSize;
+        }
+        return $this->apiRequest("v3/ticker", "GET", array_merge($request, $params));
     }
 
     /**
      * aggTrades get Market History / Aggregate Trades
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
      *
      * $trades = $api->aggTrades("BNBBTC");
      *
@@ -1237,14 +1348,13 @@ class API
         $request = [
             "symbol" => $symbol,
         ];
-        return $this->tradesData($this->apiRequest("v1/aggTrades", "GET", array_merge($request, $params)));
+        return $this->tradesData($this->apiRequest("v3/aggTrades", "GET", array_merge($request, $params)));
     }
 
     /**
      * historicalTrades - Get historical trades for a specific currency
      *
-     * @link https://github.com/binance/binance-spot-api-docs/blob/master/rest-api.md#old-trade-lookup-market_data
-     * @link https://binance-docs.github.io/apidocs/spot/en/#old-trade-lookup
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
      *
      * @property int $weight 5
      * Standard weight is 5 but if no tradeId is given, weight is 1
@@ -1278,6 +1388,8 @@ class API
     /**
      * depth get Market depth
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
      * $depth = $api->depth("ETHBTC");
      *
      * @param $symbol string the symbol to get the depth information for
@@ -1299,7 +1411,7 @@ class API
             "symbol" => $symbol,
             "limit" => $limit,
         ];
-        $json = $this->apiRequest("v1/depth", "GET", array_merge($request, $params));
+        $json = $this->apiRequest("v3/depth", "GET", array_merge($request, $params));
         if (is_array($json) === false) {
             echo "Error: unable to fetch depth" . PHP_EOL;
             $json = [];
@@ -1341,7 +1453,7 @@ class API
             } else if ($api_version === 'v3') {
                 $url = "v3/balance";
             } else {
-                throw new \Exception("Invalid API version specified. Use 'v2' or 'v3'.");
+                throw new \Exception("balances(): Invalid API version specified. Use 'v2' or 'v3'.");
             }
         }
         $response = $this->httpRequest($url, "GET", array_merge($request, $params), true);
@@ -1682,7 +1794,6 @@ class API
         if (isset($header['x-mbx-used-weight-1m'])) {
             $this->setXMbxUsedWeight1m($header['x-mbx-used-weight-1m']);
         }
-
         if (isset($json['msg']) && !empty($json['msg'])) {
             if ($json['msg'] !== 'success' && $url != 'v1/system/status' && $url != 'v3/systemStatus.html' && $url != 'v3/accountStatus.html' && $url != 'v1/allOpenOrders') {
                 // should always output error, not only on httpdebug
@@ -1750,22 +1861,56 @@ class API
      * order formats the orders before sending them to the curl wrapper function
      * You can call this function directly or use the helper functions
      *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#sor
+     *
      * @see buy()
      * @see sell()
      * @see marketBuy()
      * @see marketSell() $this->httpRequest( "https://api.binance.com/api/v1/ticker/24hr");
      *
-     * @param $side string typically "BUY" or "SELL"
-     * @param $symbol string to buy or sell
-     * @param $quantity string in the order
-     * @param $price string for the order
-     * @param $type string is determined by the symbol bu typicall LIMIT, STOP_LOSS_LIMIT etc.
-     * @param $params array additional transaction options
+     * @param string $side (mandatory) typically "BUY" or "SELL"
+     * @param string $symbol (mandatory) to buy or sell
+     * @param string $quantity (mandatory) in the order
+     * @param string $price (optional) for the order
+     * @param string $type (optional) is determined by the symbol bu typicall LIMIT, STOP_LOSS_LIMIT etc. (default is LIMIT)
+     * @param array $params (optional) additional transaction options
+     * - @param string $params['timeInForce'] - GTC, IOC, FOK
+     * - @param bool $params['isQuoteOrder'] - if true, quantity is in the quote asset (not for sor orders)
+     * - @param string $params['newClientOrderId'] - custom client order id
+     * - @param string $params['strategyId']
+     * - @param int $params['strategyType']
+     * - @param string $params['stopPrice'] - stop price for STOP_LOSS, STOP_LOSS_LIMIT, TAKE_PROFIT, and TAKE_PROFIT_LIMIT orders (not for SOR orders)
+     * - @param string $params['trailingDelta'] - for STOP_LOSS, STOP_LOSS_LIMIT, TAKE_PROFIT, and TAKE_PROFIT_LIMIT orders (not for SOR orders)
+     * - @param string $params['icebergQty'] - used with LIMIT, STOP_LOSS_LIMIT, and TAKE_PROFIT_LIMIT to create an iceberg order
+     * - @param string $params['newOrderRespType'] - set the response type of the order (ACK, RESULT, FULL)
+     * - @param string $params['selfTradePreventionMode'] - NONE, EXPIRE_MAKER, EXPIRE_TAKER, EXPIRE_BOTH or DECREMENT (default is NONE)
+     * - @param bool $params['sor'] - if true, order will be sent to SOR endpoint
+     * - @param bool $params
      * @param $test bool whether to test or not, test only validates the query
      * @return array containing the response
      * @throws \Exception
      */
     public function order(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", array $params = [], bool $test = false)
+    {
+        $request = $this->createSpotOrderRequest($side, $symbol, $quantity, $price, $type, $params);
+        $sor = false;
+        if (isset($request['sor'])) {
+            $sor = $request['sor'];
+            unset($request['sor']);
+        }
+        $url = $sor ? "v3/sor/order" : "v3/order";
+        if ($test) {
+            $url = $url . "/test";
+        }
+        return $this->apiRequest($url, "POST", $request, true); // sending only $request cuz $params are already added to $request inside createSpotOrderRequest
+    }
+
+    /**
+     * createSpotOrderRequest
+     * helper function to create a request for the spot order
+     */
+    protected function createSpotOrderRequest(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", array $params = [])
     {
         $request = [
             "symbol" => $symbol,
@@ -1820,14 +1965,124 @@ class API
         } else {
             $request['newClientOrderId'] = $this->generateSpotClientOrderId();
         }
-
-        $qstring = ($test === false) ? "v3/order" : "v3/order/test";
-        return $this->apiRequest($qstring, "POST", array_merge($request, $params), true);
+        return array_merge($request, $params);
     }
 
     /**
+     * editOrder - edits a quantity of an existing order
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#order-amend-keep-priority-trade
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/faqs/order_amend_keep_priority
+     *
+     * @param string $symbol (mandatory) market symbol
+     * @param string $quantity (mandatory) new quantity (must be greater than 0 and less than the original order quantity)
+     * @param string $orderId (optional) order id to be amended (mandatory if origClientOrderId is not set)
+     * @param string $origClientOrderId (optional) original client order id to be amended (mandatory if orderId is not set)
+     * @param array $params (optional) additional transaction options
+     * - @param string $params['newClientOrderId'] - custom client order id
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function editOrder(string $symbol, $quantity, ?string $orderId = null, ?string $origClientOrderId = null, array $params = [])
+    {
+        $request = [
+            "symbol" => $symbol,
+            "newQty" => $quantity,
+        ];
+
+        if (!is_null($orderId)) {
+            $request['orderId'] = $orderId;
+        } else if (is_null($origClientOrderId)) {
+            throw new \Exception('editOrder(): Either orderId or origClientOrderId must be set');
+        } else {
+            $request['origClientOrderId'] = $origClientOrderId;
+        }
+        if (isset($params['newClientOrderId'])) {
+            $request['newClientOrderId'] = $params['newClientOrderId'];
+        } else {
+            $request['newClientOrderId'] = $this->generateSpotClientOrderId();
+        }
+        return $this->apiRequest("v3/order/amend/keepPriority", "PUT", array_merge($request, $params), true);
+    }
+
+    /**
+     * sorOrder creates an order using the SOR endpoint
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#sor
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/faqs/sor_faq
+     *
+     * @param string $side (mandatory) typically "BUY" or "SELL"
+     * @param string $symbol (mandatory) to buy or sell
+     * @param string $quantity (mandatory) in the order
+     * @param string $price (optional) for the order
+     * @param string $type (optional) is determined by the symbol bu typicall LIMIT, STOP_LOSS_LIMIT etc. (default is LIMIT)
+     * @param array $params (optional) additional transaction options
+     * - @param string $params['timeInForce'] - GTC, IOC, FOK
+     * - @param string $params['newClientOrderId'] - custom client order id
+     * - @param string $params['strategyId']
+     * - @param int $params['strategyType']
+     * - @param string $params['icebergQty'] - used with LIMIT, STOP_LOSS_LIMIT, and TAKE_PROFIT_LIMIT to create an iceberg order
+     * - @param string $params['newOrderRespType'] - set the response type of the order (ACK, RESULT, FULL)
+     * - @param string $params['selfTradePreventionMode'] - NONE, EXPIRE_MAKER, EXPIRE_TAKER, EXPIRE_BOTH or DECREMENT (default is NONE)
+     * - @param bool $params['sor'] - if true, order will be sent to SOR endpoint
+     * - @param bool $params
+     * @param $test bool whether to test or not, test only validates the query
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function sorOrder(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", array $params = [], bool $test = false)
+    {
+        $params['sor'] = true;
+        return $this->order($side, $symbol, $quantity, $price, $type, $params, $test);
+    }
+
+    /**
+     * replaceOrder - cancels an existing order and places a new order on the same symbol
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#cancel-an-existing-order-and-send-a-new-order-trade
+     *
+     * @param string $side (mandatory) typically "BUY" or "SELL"
+     * @param string $symbol (mandatory) to buy or sell
+     * @param string $quantity (mandatory) in the order
+     * @param string $price (optional) for the order
+     * @param string $type (optional) is determined by the symbol bu typicall LIMIT, STOP_LOSS_LIMIT etc. (default is LIMIT)
+     * @param string $cancelOrderId (optional) the orderId of the order to be replaced (mandatory if cancelOrigClientOrderId is not set)
+     * @param string $cancelOrigClientOrderId (optional) the origClientOrderId of the order to be replaced (mandatory if cancelOrderId is not set)
+     * @param bool $allowFailure (optional) if true new order placement will be attempted even if cancel request fails (default is false)
+     * @param string $cancelRestrictions (optional) ONLY_NEW (cancel will succeed if the order status is NEW) or ONLY_PARTIALLY_FILLED (cancel will succeed if order status is PARTIALLY_FILLED)
+     * @param string $orderRateLimitExceededMode (optional) DO_NOTHING (default - will only attempt to cancel the order if account has not exceeded the unfilled order rate limit) or CANCEL_ONLY (will always cancel the order)
+     * @param array $params (optional) additional transaction options (same as for order())
+     *
+     * returns array containing the response
+     * @throws \Exception
+     */
+    public function replaceOrder(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", ?string $cancelOrderId = null, string $cancelOrigClientOrderId = null, bool $allowFailure = null, string $cancelRestrictions = null, string $orderRateLimitExceededMode = null, array $params = [])
+    {
+        $request = $this->createSpotOrderRequest($side, $symbol, $quantity, $price, $type, $params);
+        if (!is_null($cancelOrderId)) {
+            $request['cancelOrderId'] = $cancelOrderId;
+        } else if (is_null($cancelOrigClientOrderId)) {
+            throw new \Exception("replaceOrder(): Either cancelOrderId or cancelOrigClientOrderId must be set");
+        }
+        if (!is_null($cancelOrigClientOrderId)) {
+            $request['cancelOrigClientOrderId'] = $cancelOrigClientOrderId;
+        }
+        $request['cancelReplaceMode'] = $allowFailure ? 'ALLOW_FAILURE' : 'STOP_ON_FAILURE';
+        if (!is_null($cancelRestrictions)) {
+            $request['cancelRestrictions'] = $cancelRestrictions;
+        }
+        if (!is_null($orderRateLimitExceededMode)) {
+            $request['orderRateLimitExceededMode'] = $orderRateLimitExceededMode;
+        }
+        return $this->apiRequest("v3/order/cancelReplace", "POST", $request, true); // only request is needed, params are already added to request inside createSpotOrderRequest
+    }
+    /**
      * candlesticks get the candles for the given intervals
      * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
      *
      * $candles = $api->candlesticks("BNBBTC", "5m");
      *
@@ -1862,20 +2117,62 @@ class API
             $request["endTime"] = $endTime;
         }
 
-        $response = $this->apiRequest("v1/klines", "GET", array_merge($request, $params));
+        $response = $this->apiRequest("v3/klines", "GET", array_merge($request, $params));
 
         if (is_array($response) === false) {
             return [];
         }
 
         if (count($response) === 0) {
-            echo "warning: v1/klines returned empty array, usually a blip in the connection or server" . PHP_EOL;
+            echo "warning: v3/klines returned empty array, usually a blip in the connection or server" . PHP_EOL;
             return [];
         }
 
         $ticks = $this->chartData($symbol, $interval, $response);
         $this->charts[$symbol][$interval] = $ticks;
         return $ticks;
+    }
+
+    /**
+     * uiCandlesticks return modified kline data, optimized for presentation of candlestick charts
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
+     *
+     * $candles = $api->uiCandlesticks("BNBBTC", "5m");
+     *
+     * @param $symbol market symbol to get the response for, e.g. ETHUSDT
+     * @param $interval string to request
+     * @param $limit int limit the amount of candles
+     * @param $startTime string request candle information starting from here
+     * @param $endTime string request candle information ending here
+     * @param $params array additional parameters
+     * - @param string $params['timeZone'] (optional) default is 0 (UTC) - time zone to use for the response
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function uiCandlesticks(string $symbol, string $interval = "5m", ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        $request = [
+            "symbol" => $symbol,
+            "interval" => $interval,
+        ];
+
+        if ($limit) {
+            $request["limit"] = $limit;
+        }
+
+        if ($startTime) {
+            $request["startTime"] = $startTime;
+        }
+
+        if ($endTime) {
+            $request["endTime"] = $endTime;
+        }
+
+        $response = $this->apiRequest("v3/uiKlines", "GET", array_merge($request, $params));
+
+        return $response;
     }
 
     /**
@@ -3104,7 +3401,7 @@ class API
     /**
      * systemStatus - Status indicator for api sapi
      *
-     * @link https://binance-docs.github.io/apidocs/spot/en/#test-connectivity
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints
      * @link https://binance-docs.github.io/apidocs/spot/en/#system-status-system
      * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api
      *
@@ -3218,6 +3515,168 @@ class API
     }
 
     /**
+     * orderRateLimit gets the user rate limit
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/account-endpoints#query-unfilled-order-count-user_data
+     *
+     * $rateLimit = $api->orderRateLimit();
+     *
+     * @property int $weight 1
+     *
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the rate limit details
+     * @throws \Exception
+     */
+    public function orderRateLimit(array $params = [])
+    {
+        return $this->apiRequest("v3/rateLimit/order", 'GET', $params, true);
+    }
+
+    /**
+     * preventedMatches - Get the list of orders that were expired due to STP
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/account-endpoints#query-prevented-matches-user_data
+     *
+     * @property int $weight 2
+     * - 2 if preventedMatchId is provided
+     * - 20 if orderId is provided
+     *
+     * @param string $symbol (mandatory) The symbol, e.g. BTCUSDT
+     * @param string $preventedMatchId (optional) The ID of the prevented match (mandatory if orderId is not provided)
+     * @param string $orderId (optional) The ID of the order (mandatory if preventedMatchId is not provided)
+     * @param string $fromPreventedMatchId (optional) The ID of the prevented match to start from
+     * @param int    $limit (optional) The number of results to return (default is 500, max is 1000)
+     * @param array  $params (optional) An array of additional parameters that the API endpoint allows
+     *
+     * @return array with error message or the rate limit details
+     * @throws \Exception
+     */
+    public function preventedMatches(string $symbol, ?string $preventedMatchId = null, ?string $orderId = null, ?string $fromPreventedMatchId = null, ?int $limit = null, array $params = []) {
+        $request = [
+            'symbol' => $symbol,
+        ];
+
+        if (is_null($preventedMatchId) && is_null($orderId)) {
+            throw new \Exception("Either preventedMatchId or orderId must be provided");
+        } else if ($preventedMatchId) {
+            $request['preventedMatchId'] = $preventedMatchId;
+        } else {
+            $request['orderId'] = $orderId;
+        }
+
+        if ($fromPreventedMatchId) {
+            $request['fromPreventedMatchId'] = $fromPreventedMatchId;
+        }
+
+        if (!is_null($limit)) {
+            $request['limit'] = $limit;
+        }
+
+        return $this->apiRequest("v3/myPreventedMatches", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
+     * allocations - Get the allocations resulting from SOR order placement
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/account-endpoints#query-allocations-user_data
+     *
+     * @property int $weight 20
+     *
+     * @param string $symbol (mandatory) The symbol, e.g. BTCUSDT
+     * @param int    $startTime (optional) The start time of the query
+     * @param int    $endTime (optional) The end time of the query
+     * @param string $fromAllocationId (optional) The ID of the allocation to start from
+     * @param int    $limit (optional) The number of results to return (default is 500, max is 1000)
+     * @param string $orderId (optional) The ID of the order
+     * @param array  $params (optional) An array of additional parameters that the API endpoint allows
+     *
+     * @return array with error message or the rate limit details
+     * @throws \Exception
+     */
+    public function allocations(string $symbol, ?int $startTime = null, ?int $endTime = null, ?string $fromAllocationId = null, ?int $limit = null, ?string $orderId = null, array $params = []) {
+        $request = [
+            'symbol' => $symbol,
+        ];
+
+        if ($startTime) {
+            $request['startTime'] = $startTime;
+        }
+
+        if ($endTime) {
+            $request['endTime'] = $endTime;
+        }
+
+        if ($fromAllocationId) {
+            $request['fromAllocationId'] = $fromAllocationId;
+        }
+
+        if (!is_null($limit)) {
+            $request['limit'] = $limit;
+        }
+
+        if ($orderId) {
+            $request['orderId'] = $orderId;
+        }
+
+        return $this->apiRequest("v3/myAllocations", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
+     * commissionRate - Get the commission rate for a symbol
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/account-endpoints#query-commission-rates-user_data
+     *
+     * @property int $weight 20
+     *
+     * @param string $symbol (mandatory) The symbol, e.g. BTCUSDT
+     * @param array  $params (optional) An array of additional parameters that the API endpoint allows
+     *
+     * @return array with error message or the rate limit details
+     * @throws \Exception
+     */
+    public function commissionRate(string $symbol, array $params = []) {
+        $request = [
+            'symbol' => $symbol,
+        ];
+
+        return $this->apiRequest("v3/account/commission", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
+     * orderAmendments - Get all amendments of a single order
+     *
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/account-endpoints#query-order-amendments-user_data
+     *
+     * @property int $weight 4
+     *
+     * @param string $symbol (mandatory) The symbol, e.g. BTCUSDT
+     * @param string $orderId (mandatory) The ID of the order
+     * @param string $fromExecutionId (optional) The ID of the execution to start from
+     * @param int    $limit (optional) The number of results to return (default is 500, max is 1000)
+     *
+     * @return array with error message or the rate limit details
+     * @throws \Exception
+     */
+    public function orderAmendments(string $symbol, string $orderId, ?string $fromExecutionId = null, ?int $limit = null, array $params = []) {
+        $request = [
+            'symbol' => $symbol,
+            'orderId' => $orderId,
+        ];
+
+        if ($fromExecutionId) {
+            $request['fromExecutionId'] = $fromExecutionId;
+        }
+
+        if (!is_null($limit)) {
+            $request['limit'] = $limit;
+        }
+
+        return $this->apiRequest("v3/order/amendments", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
      * ocoOrder - Create a new OCO order
      *
      * @link https://binance-docs.github.io/apidocs/spot/en/#new-oco-trade
@@ -3284,6 +3743,8 @@ class API
 
     /**
     * avgPrice - get the average price of a symbol based on the last 5 minutes
+    *
+    * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints
     *
     * $avgPrice = $api->avgPrice( "ETHBTC" );
     *
@@ -4539,10 +5000,10 @@ class API
     {
         $formatedOrders = $this->createBatchOrdersRequest($orders);
         if (count($formatedOrders) > 5) {
-            throw new \Exception('futuresBatchOrders: max 5 orders allowed');
+            throw new \Exception('futuresBatchOrders(): max 5 orders allowed');
         }
         if (count($formatedOrders) < 1) {
-            throw new \Exception('futuresBatchOrders: at least 1 order required');
+            throw new \Exception('futuresBatchOrders(): at least 1 order required');
         }
         $request = [];
 
@@ -4578,7 +5039,7 @@ class API
             $request['origClientOrderId'] = $origClientOrderId;
         }
         if (!$origClientOrderId && !$orderId) {
-            throw new \Exception('futuresEditOrder: either orderId or origClientOrderId must be set');
+            throw new \Exception('futuresEditOrder(): either orderId or origClientOrderId must be set');
         }
         if ($orderId) {
             $request['orderId'] = $orderId;
@@ -4677,7 +5138,7 @@ class API
         if ($orderid) {
             $request['orderId'] = $orderid;
         } else if (!isset($params['origClientOrderId'])) {
-            throw new \Exception('futuresCancel: either orderId or origClientOrderId must be set');
+            throw new \Exception('futuresCancel(): either orderId or origClientOrderId must be set');
         }
         return $this->fapiRequest("v1/order", 'DELETE', array_merge($request, $params), true);
     }
@@ -4710,7 +5171,7 @@ class API
             // remove spaces between the ids
             $request['origClientOrderIdList'] = str_replace(', ', ',', json_encode($origClientOrderIdList));
         } else {
-            throw new \Exception('futuresCancelBatchOrders: either orderIdList or origClientOrderIdList must be set');
+            throw new \Exception('futuresCancelBatchOrders(): either orderIdList or origClientOrderIdList must be set');
         }
 
         return $this->fapiRequest("v1/batchOrders", 'DELETE', array_merge($request, $params), true);
@@ -4789,7 +5250,7 @@ class API
         } else if ($origClientOrderId) {
             $request['origClientOrderId'] = $origClientOrderId;
         } else {
-            throw new \Exception('futuresOrderStatus: either orderId or origClientOrderId must be set');
+            throw new \Exception('futuresOrderStatus(): either orderId or origClientOrderId must be set');
         }
 
         return $this->fapiRequest("v1/order", 'GET', array_merge($request, $params), true);
@@ -4886,7 +5347,7 @@ class API
         } else if ($origClientOrderId) {
             $request['origClientOrderId'] = $origClientOrderId;
         } else {
-            throw new \Exception('futuresOpenOrder: either orderId or origClientOrderId must be set');
+            throw new \Exception('futuresOpenOrder(): either orderId or origClientOrderId must be set');
         }
 
         return $this->fapiRequest("v1/openOrder", 'GET', array_merge($request, $params), true);
@@ -5228,7 +5689,7 @@ class API
         }
 
         if ($api_version !== 'v2' && $api_version !== 'v3') {
-            throw new \Exception('futuresPositions: api_version must be either v2 or v3');
+            throw new \Exception('futuresPositions(): api_version must be either v2 or v3');
         }
         return $this->fapiRequest($api_version . "/positionRisk", 'GET', array_merge($request, $params), true);
     }
@@ -5357,10 +5818,10 @@ class API
                 } else if ($addOrReduce === 'REDUCE' || $addOrReduce === '2') {
                     $request['addOrReduce'] = 2;
                 } else {
-                    throw new \Exception('futuresPositionMarginChangeHistory: addOrReduce must be "ADD" or "REDUCE" or 1 or 2');
+                    throw new \Exception('futuresPositionMarginChangeHistory(): addOrReduce must be "ADD" or "REDUCE" or 1 or 2');
                 }
             } else {
-                throw new \Exception('futuresPositionMarginChangeHistory: addOrReduce must be "ADD" or "REDUCE" or 1 or 2');
+                throw new \Exception('futuresPositionMarginChangeHistory(): addOrReduce must be "ADD" or "REDUCE" or 1 or 2');
             }
         }
 
@@ -5386,7 +5847,7 @@ class API
     public function futuresBalances(array $params = [], string $api_version = 'v3')
     {
         if ($api_version !== 'v2' && $api_version !== 'v3') {
-            throw new \Exception('futuresBalances: api_version must be either v2 or v3');
+            throw new \Exception('futuresBalances(): api_version must be either v2 or v3');
         }
         return $this->balances('futures', $params, 'v3');
     }
@@ -5429,7 +5890,7 @@ class API
     public function futuresAccount(array $params = [], string $api_version = 'v3')
     {
         if ($api_version !== 'v2' && $api_version !== 'v3') {
-            throw new \Exception('futuresAccount: api_version must be either v2 or v3');
+            throw new \Exception('futuresAccount(): api_version must be either v2 or v3');
         }
 
         return $this->fapiRequest($api_version . "/account", "GET", $params, true);
@@ -5939,7 +6400,7 @@ class API
         } else if ($toAmount) {
             $request['toAmount'] = $toAmount;
         } else {
-            throw new \Exception('convertSendRequest: fromAmount or toAmount must be set');
+            throw new \Exception('convertSendRequest(): fromAmount or toAmount must be set');
         }
         if ($validTime) {
             $request['validTime'] = $validTime;
@@ -5995,7 +6456,7 @@ class API
         } else if ($quoteId) {
             $request['quoteId'] = $quoteId;
         } else {
-            throw new \Exception('convertStatus: orderId or quoteId must be set');
+            throw new \Exception('convertStatus(): orderId or quoteId must be set');
         }
         return $this->fapiRequest("v1/convert/orderStatus", 'GET', array_merge($request, $params), true);
     }
