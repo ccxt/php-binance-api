@@ -1580,6 +1580,36 @@ class API
         return $this->httpRequest($url, $method, $params, $signed);
     }
 
+    public function dapiRequest($url, $method = "GET", $params = [], $signed = false)
+    {
+        $params['dapi'] = true;
+        return $this->httpRequest($url, $method, $params, $signed);
+    }
+
+    public function dapiDataRequest($url, $method = "GET", $params = [], $signed = false)
+    {
+        $params['dapiData'] = true;
+        return $this->httpRequest($url, $method, $params, $signed);
+    }
+
+    public function futuresRequest($url, $method = "GET", $params = [], $signed = false)
+    {
+        if (isset($params['inverse']) && $params['inverse'] === true) {
+            return $this->dapiRequest($url, $method, $params, $signed);
+        } else {
+            return $this->fapiRequest($url, $method, $params, $signed);
+        }
+    }
+
+    public function futuresDataRequest($url, $method = "GET", $params = [], $signed = false)
+    {
+        if (isset($params['inverse']) && $params['inverse'] === true) {
+            return $this->dapiDataRequest($url, $method, $params, $signed);
+        } else {
+            return $this->fapiDataRequest($url, $method, $params, $signed);
+        }
+    }
+
     /**
      * httpRequest curl wrapper for all http api requests.
      * You can't call this function directly, use the helper functions
@@ -3427,6 +3457,13 @@ class API
             $arr['fapi']['status'] = $fapi_status;
         }
 
+        $dapi_status = $this->dapiRequest("v1/ping", 'GET', $params);
+        if ( empty($fapi_status) ) {
+            $arr['dapi']['status'] = 'ping ok';
+        } else {
+            $arr['dapi']['status'] = $fapi_status;
+        }
+
         $arr['sapi'] = $this->sapiRequest("v1/system/status", 'GET', $params);
         return $arr;
     }
@@ -3821,7 +3858,7 @@ class API
      */
     public function futuresTime(array $params = [])
     {
-        return $this->fapiRequest("v1/time", "GET", $params);
+        return $this->futuresRequest("v1/time", "GET", $params);
     }
 
     /**
@@ -3887,7 +3924,7 @@ class API
         if ($limit) {
             $request['limit'] = $limit;
         }
-        $json = $this->fapiRequest("v1/depth", "GET", array_merge($request, $params));
+        $json = $this->futuresRequest("v1/depth", "GET", array_merge($request, $params));
         if (is_array($json) === false) {
             echo "Error: unable to fetch futures depth" . PHP_EOL;
             $json = [];
@@ -3896,12 +3933,16 @@ class API
             echo "Error: futures depth were empty" . PHP_EOL;
             return $json;
         }
+        $type = 'futures';
+        if (isset($params['inverse']) && $params['inverse'] === true) {
+            $type = 'inverseFutures';
+        }
         if (isset($this->info[$symbol]) === false) {
             $this->info[$symbol] = [];
-            $this->info[$symbol]['futures'] = [];
+            $this->info[$symbol][$type] = [];
         }
-        $this->info[$symbol]['futures']['firstUpdate'] = $json['lastUpdateId'];
-        return $this->depthData($symbol, $json, 'futures');
+        $this->info[$symbol][$type]['firstUpdate'] = $json['lastUpdateId'];
+        return $this->depthData($symbol, $json, $type);
     }
 
     /**
@@ -3927,7 +3968,7 @@ class API
         if ($limit) {
             $request['limit'] = $limit;
         }
-        return $this->fapiRequest("v1/trades", "GET", array_merge($request, $params));
+        return $this->futuresRequest("v1/trades", "GET", array_merge($request, $params));
     }
 
     /**
@@ -3957,7 +3998,7 @@ class API
         if ($tradeId) {
             $request['fromId'] = $tradeId;
         }
-        return $this->fapiRequest("v1/historicalTrades", "GET", array_merge($request, $params), true);
+        return $this->futuresRequest("v1/historicalTrades", "GET", array_merge($request, $params), true);
     }
 
     /**
@@ -3995,7 +4036,7 @@ class API
         if ($limit) {
             $request['limit'] = $limit;
         }
-        return $this->tradesData($this->fapiRequest("v1/aggTrades", "GET", array_merge($request, $params)));
+        return $this->tradesData($this->futuresRequest("v1/aggTrades", "GET", array_merge($request, $params)));
     }
 
     /**
@@ -4145,18 +4186,6 @@ class API
      */
     private function futuresCandlesticksHelper($symbol, $interval, $limit, $startTime, $endTime, $klineType, $contractType = null, $params = [])
     {
-        if (!isset($this->charts['futures'])) {
-            $this->charts['futures'] = [];
-        }
-        if (!isset($this->charts['futures'][$symbol])) {
-            $this->charts['futures'][$symbol] = [];
-        }
-        if (!isset($this->charts['futures'][$symbol][$contractType])) {
-            $this->charts['futures'][$symbol][$contractType] = [];
-        }
-        if (!isset($this->charts['futures'][$symbol][$contractType][$interval])) {
-            $this->charts['futures'][$symbol][$contractType][$interval] = [];
-        }
         $request = [
             'interval' => $interval,
         ];
@@ -4177,18 +4206,23 @@ class API
         if ($contractType) {
             $request['contractType'] = $contractType;
         }
-
-        $response = $this->fapiRequest("v1/{$klineType}", 'GET', array_merge($request, $params));
+        $apiType = 'fapi';
+        $market_type = 'futures';
+        if ($params['inverse'] === true) {
+            $apiType = 'dapi';
+            $market_type = 'inverseFutures';
+        }
+        $response = $this->futuresRequest("v1/{$klineType}", 'GET', array_merge($request, $params));
 
         if (is_array($response) === false) {
             return [];
         }
         if (count($response) === 0) {
-            echo "warning: fapi/v1/{$klineType} returned empty array, usually a blip in the connection or server" . PHP_EOL;
+            echo "warning: {$apiType}/v1/{$klineType} returned empty array, usually a blip in the connection or server" . PHP_EOL;
             return [];
         }
 
-        $candlesticks = $this->chartData($symbol, $interval, $response, 'futures', $klineType);
+        $candlesticks = $this->chartData($symbol, $interval, $response, $market_type, $klineType);
         $this->charts['futures'][$symbol][$klineType][$interval] = $candlesticks;
         return $candlesticks;
     }
@@ -4214,7 +4248,7 @@ class API
         if ($symbol) {
             $request['symbol'] = $symbol;
         }
-        return $this->fapiRequest("v1/premiumIndex", "GET", array_merge($request, $params));
+        return $this->futuresRequest("v1/premiumIndex", "GET", array_merge($request, $params));
     }
 
     /**
@@ -4248,7 +4282,7 @@ class API
         if ($endTime) {
             $request['endTime'] = $endTime;
         }
-        return $this->fapiRequest("v1/fundingRate", "GET", array_merge($request, $params));
+        return $this->futuresRequest("v1/fundingRate", "GET", array_merge($request, $params));
     }
 
     /**
@@ -4265,7 +4299,7 @@ class API
      */
     public function futuresFundingInfo(array $params = [])
     {
-        return $this->fapiRequest("v1/fundingInfo", "GET", $params);
+        return $this->futuresRequest("v1/fundingInfo", "GET", $params);
     }
 
     /**
@@ -6459,5 +6493,349 @@ class API
             throw new \Exception('convertStatus(): orderId or quoteId must be set');
         }
         return $this->fapiRequest("v1/convert/orderStatus", 'GET', array_merge($request, $params), true);
+    }
+
+    /*********************************************
+    *
+    * Binance inverse futures (dapi) functions
+    *
+    * https://developers.binance.com/docs/derivatives/coin-margined-futures/general-info
+    *
+    *********************************************/
+
+    /**
+     * futuresInverseTime Gets the server time
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Check-Server-time
+     *
+     * $time = $api->futuresInverseTime();
+     *
+     * @return array with error message or array with server time key
+     * @throws \Exception
+     */
+    public function inverseFuturesTime(array $params = [])
+    {
+        return $this->futuresRequest("v1/time", "GET", array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesExchangeInfo -  Gets the complete exchange info, including limits, currency options etc. for inverseFutures
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Exchange-Information
+     *
+     * $info = $api->inverseFuturesExchangeInfo();
+     *
+     * @property int $weight 1
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesExchangeInfo(array $params = [])
+    {
+        if (!$this->inverseFuturesExchangeInfo) {
+            $arr = $this->fapiRequest("v1/exchangeInfo", "GET", $params);
+            if ((is_array($arr) === false) || empty($arr)) {
+                echo "Error: unable to fetch inverse futures exchange info" . PHP_EOL;
+                $arr = array();
+                $arr['symbols'] = array();
+            }
+            $this->inverseFuturesExchangeInfo = $arr;
+            $this->inverseFuturesExchangeInfo['symbols'] = null;
+
+            foreach ($arr['symbols'] as $key => $value) {
+                $this->inverseFuturesExchangeInfo['symbols'][$value['symbol']] = $value;
+            }
+        }
+
+        return $this->inverseFuturesExchangeInfo;
+    }
+
+    /**
+     * inverseFuturesDepth get Market depth for futures
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Order-Book
+     *
+     * $depth = $api->inverseFuturesDepth("BTCUSD_PERP");
+     *
+     * @property int $weight 10
+     * for limit 5, 10, 20, 50 - weight 2
+     * for limit 100 - weight 5
+     * for limit 500 (default) - weight 10
+     * for limit 1000 - weight 20
+     *
+     * @param string $symbol (mandatory) the symbol to get the depth information for, e.g. BTCUSD_PERP
+     * @param int    $limit (optional) $limit set limition for number of market depth data, default 500, max 1000 (possible values are 5, 10, 20, 50, 100, 500, 1000)
+     * @return array with error message or array of market depth
+     * @throws \Exception
+     */
+    public function inverseFuturesDepth(string $symbol, ?int $limit = null, array $params = [])
+    {
+        return $this->futuresDepth($symbol, $limit, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesRecentTrades - Get recent trades for a specific currency
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Recent-Trades-List
+     *
+     * $trades = $api->inverseFuturesRecentTrades("BTCUSD_PERP");
+     *
+     * @property int $weight 5
+     *
+     * @param string $symbol (mandatory) the symbol to query, e.g. BTCUSD_PERP
+     * @param int    $limit  (optional) limit the amount of trades, default 500, max 1000
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesRecentTrades(string $symbol, ?int $limit = null, array $params = [])
+    {
+        return $this->futuresRecentTrades($symbol, $limit, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesHistoricalTrades - Get historical trades for a specific currency
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Old-Trades-Lookup
+     *
+     * $trades = $api->inverseFuturesHistoricalTrades("BTCUSD_PERP");
+     *
+     * @property int $weight 20
+     *
+     * @param string $symbol  (mandatory) the symbol to query, e.g. BTCUSD_PERP
+     * @param int    $limit   (optional)  limit the amount of trades, default 100, max 500
+     * @param int    $tradeId (optional)  return the orders from this orderId onwards, negative to get recent ones
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesHistoricalTrades(string $symbol, $limit = null, $tradeId = null, array $params = [])
+    {
+        return $this->futuresHistoricalTrades($symbol, $limit, $tradeId, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesAggTrades Get compressed, aggregate trades. Market trades that fill in 100ms with the same price and the same taking side will have the quantity aggregated
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Compressed-Aggregate-Trades-List
+     *
+     * $trades = $api->inverseFuturesAggTrades("BTCUSD_PERP");
+     *
+     * @property int $weight 20
+     *
+     * @param string $symbol (mandatory) the symbol to get the trade information for, e.g. BTCUSD_PERP
+     * @param int    $fromId (optional) ID to get aggregate trades from INCLUSIVE
+     * @param int    $startTime (optional) timestamp in ms to get aggregate trades from INCLUSIVE
+     * @param int    $endTime (optional) timestamp in ms to get aggregate trades until INCLUSIVE
+     * @param int    $limit (optional) the amount of trades, default 500, max 1000
+     *
+     * @return array with error message or array of market history
+     * @throws \Exception
+     */
+    public function inverseFuturesAggTrades(string $symbol, ?int $fromId = null, ?int $startTime = null, ?int $endTime = null, ?int $limit = null, array $params = [])
+    {
+        return $this->futuresAggTrades($symbol, $fromId, $startTime, $endTime, $limit, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesMarkPrice get the mark and index price for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Index-Price-and-Mark-Price
+     *
+     * $markPrice = $api->inverseFuturesMarkPrice();
+     * $markPrice = $api->inverseFuturesMarkPrice("BTCUSD_PERP");
+     *
+     * @property int $weight 10
+     *
+     * @param string $symbol (optional) market symbol to get the response for, e.g. BTCUSD_PERP
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesMarkPrice(?string $symbol = null, array $params = [])
+    {
+        return $this->futuresMarkPrice($symbol, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesFundingRateHistory get the funding rate history for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Get-Funding-Rate-History-of-Perpetual-Futures
+     *
+     * @property int $weight 1
+     *
+     * $fundingRate = $api->inverseFuturesFundingRateHistory("BTCUSD_PERP");
+     *
+     * @param string $symbol (mandatory) market symbol to get the response for, e.g. BTCUSD_PERP
+     * @param int    $limit  (optional) int limit the amount of funding rate history (default 100, max 1000)
+     * @param int    $startTime (optional) string request funding rate history starting from here
+     * @param int    $endTime (optional) string request funding rate history ending here
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesFundingRateHistory(string $symbol, ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        return $this->futuresFundingRateHistory($symbol, $limit, $startTime, $endTime, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesFundingInfo get the funding rate history for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Get-Funding-Info
+     *
+     * $fundingInfo = $api->inverseFuturesFundingInfo();
+     *
+     * @property int $weight 1
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesFundingInfo(array $params = [])
+    {
+        return $this->futuresFundingInfo(array_merge($params, ['inverse' => true])); // todo check - empty response
+    }
+
+    /**
+     * inverseFuturesCandlesticks get the candles for the given intervals
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Kline-Candlestick-Data
+     *
+     * $candles = $api->inverseFuturesCandlesticks("BTCUSD_PERP", "5m");
+     *
+     * @property int $weight 5
+     * for limit < 100 - weight 1
+     * for limit < 500 - weight 2
+     * for limit <= 1000 - weight 5
+     * for limit > 1000 - weight 10
+     *
+     * @param string $symbol (mandatory) the symbol to query, e.g. BTCUSD_PERP
+     * @param string $interval (optional) string to request - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M (default 5m)
+     * @param int    $limit (optional) int limit the amount of candles (default 500, max 1000)
+     * @param int    $startTime (optional) string request candle information starting from here
+     * @param int    $endTime (optional) string request candle information ending here
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        return $this->futuresCandlesticks($symbol, $interval, $limit, $startTime, $endTime, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesContinuousCandlesticks get the candles for the given intervals
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Continuous-Contract-Kline-Candlestick-Data
+     *
+     * $candles = $api->inverseFuturesContinuousCandlesticks("BTCUSD_PERP", "5m");
+     *
+     * @property int $weight 5
+     * for limit < 100 - weight 1
+     * for limit < 500 - weight 2
+     * for limit <= 1000 - weight 5
+     * for limit > 1000 - weight 10
+     *
+     * @param string $symbol (mandatory) market symbol to get the response for, e.g. BTCUSD_PERP
+     * @param string $interval (optional) string to request - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M (default 5m)
+     * @param int    $limit (optional) int limit the amount of candles (default 500, max 1000)
+     * @param int    $startTime (optional) string request candle information starting from here
+     * @param int    $endTime (optional) string request candle information ending here
+     * @param string $contractType (optional) string to request - PERPETUAL, CURRENT_QUARTER, NEXT_QUARTER (default PERPETUAL)
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesContinuousCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, $contractType = 'PERPETUAL', array $params = [])
+    {
+        $pair = explode('_', $symbol)[0];
+        return $this->futuresContinuousCandlesticks($pair, $interval, $limit, $startTime, $endTime, $contractType, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesIndexPriceCandlesticks get the candles for the given intervals
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Index-Price-Kline-Candlestick-Data
+     *
+     * $candles = $api->inverseFuturesIndexPriceCandlesticks("BTCUSD_PERP", "5m");
+     *
+     * @property int $weight 5
+     * for limit < 100 - weight 1
+     * for limit < 500 - weight 2
+     * for limit <= 1000 - weight 5
+     * for limit > 1000 - weight 10
+     *
+     * @param string $symbol (mandatory) market symbol to get the response for, e.g. BTCUSD_PERP
+     * @param string $interval (optional) string to request - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M (default 5m)
+     * @param int    $limit (optional) int limit the amount of candles (default 500, max 1000)
+     * @param int    $startTime (optional) string request candle information starting from here
+     * @param int    $endTime (optional) string request candle information ending here
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesIndexPriceCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        $pair = explode('_', $symbol)[0];
+        return $this->futuresIndexPriceCandlesticks($pair, $interval, $limit, $startTime, $endTime, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesMarkPriceCandlesticks get the candles for the given intervals
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Mark-Price-Kline-Candlestick-Data
+     *
+     * $candles = $api->inverseFuturesMarkPriceCandlesticks("BTCUSD_PERP", "5m");
+     *
+     * @property int $weight 5
+     * for limit < 100 - weight 1
+     * for limit < 500 - weight 2
+     * for limit <= 1000 - weight 5
+     * for limit > 1000 - weight 10
+     *
+     * @param string $symbol (mandatory) market symbol to get the response for, e.g. BTCUSD_PERP
+     * @param string $interval (optional) string to request - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M (default 5m)
+     * @param int    $limit (optional) int limit the amount of candles (default 500, max 1000)
+     * @param int    $startTime (optional) string request candle information starting from here
+     * @param int    $endTime (optional) string request candle information ending here
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesMarkPriceCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        return $this->futuresMarkPriceCandlesticks($symbol, $interval, $limit, $startTime, $endTime, array_merge($params, ['inverse' => true]));
+    }
+
+    /**
+     * inverseFuturesPremiumIndexCandlesticks get the candles for the given intervals
+     * 1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M
+     *
+     * @link https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/rest-api/Premium-Index-Kline-Data
+     *
+     * $candles = $api->inverseFuturesPremiumIndexCandlesticks("ETHBTC", "5m");
+     *
+     * @property int $weight 5
+     * for limit < 100 - weight 1
+     * for limit < 500 - weight 2
+     * for limit <= 1000 - weight 5
+     * for limit > 1000 - weight 10
+     *
+     * @param string $symbol (mandatory) market symbol to get the response for, e.g. ETHUSDT
+     * @param string $interval (optional) string to request - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M (default 5m)
+     * @param int    $limit (optional) int limit the amount of candles (default 500, max 1000)
+     * @param int    $startTime (optional) string request candle information starting from here
+     * @param int    $endTime (optional) string request candle information ending here
+     *
+     * @return array containing the response
+     * @throws \Exception
+     */
+    public function inverseFuturesPremiumIndexCandlesticks(string $symbol, string $interval = '5m', ?int $limit = null, $startTime = null, $endTime = null, array $params = [])
+    {
+        return $this->futuresPremiumIndexCandlesticks($symbol, $interval, $limit, $startTime, $endTime, array_merge($params, ['inverse' => true]));
     }
 }
