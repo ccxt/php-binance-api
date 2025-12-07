@@ -5288,7 +5288,7 @@ class API
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function futuresOrderStatus(string $symbol, $orderId = null, $origClientOrderId = null, array $params = [])
+    public function futuresOrderStatus(string $symbol, $orderId = null, $origClientOrderId = null, array $params = [], )
     {
         $request = [
             'symbol' => $symbol,
@@ -5302,6 +5302,35 @@ class API
         }
 
         return $this->fapiRequest("v1/order", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
+     * futuresAlgoOrderStatus gets the details of a futures algo order
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Query-Algo-Order
+     *
+     * $order = $api->futuresAlgoOrderStatus("123456789");
+     *
+     * @param string $algoId (optional) order id to get the response for (mandatory if clientAlgoId is not set)
+     * @param string $clientAlgoId (optional) original client order id to get the response for (mandatory if algoId is not set)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the order details
+     * @throws \Exception
+     */
+    public function futuresAlgoOrderStatus($algoId = null, $clientAlgoId = null, array $params = [])
+    {
+        $request = [];
+        if ($algoId) {
+            $request['algoId'] = $algoId;
+        } else if ($clientAlgoId) {
+            $request['clientAlgoId'] = $clientAlgoId;
+        } else {
+            throw new \Exception('futuresAlgoOrderStatus(): either algoId or clientAlgoId must be set');
+        }
+
+        return $this->fapiRequest("v1/algoOrder", 'GET', array_merge($request, $params), true);
     }
 
     /**
