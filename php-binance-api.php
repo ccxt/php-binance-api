@@ -516,7 +516,7 @@ class API
         ];
         if (!is_null($orderid)) {
             $request["orderId"] = $orderid;
-        } else if (!is_set($params['origClientOrderId'])) {
+        } else if (!isset($params['origClientOrderId'])) {
             throw new Exception("Either orderId or origClientOrderId must be provided");
         }
         return $this->apiRequest("v3/order", "DELETE", array_merge($request, $params), true);
@@ -545,7 +545,7 @@ class API
         ];
         if (!is_null($orderid)) {
             $request["orderId"] = $orderid;
-        } else if (!is_set($params['origClientOrderId'])) {
+        } else if (!isset($params['origClientOrderId'])) {
             throw new Exception("Either orderId or origClientOrderId must be provided");
         }
         return $this->apiRequest("v3/order", "GET", array_merge($request, $params), true);
@@ -5192,6 +5192,32 @@ class API
     }
 
     /**
+     * futuresAlgoCancel cancels a futures order
+     *
+     * $algoid = "123456789";
+     * $order = $api->futuresCancel($algoid);
+     *
+     * @param string $algoid (optional) the algoid to cancel (mandatory if $params['clientalgoid'] is not set)
+     * @param array  $params (optional) additional options
+     * - @param string $params['clientalgoid'] original client order id to cancel
+     * - @param int    $params['recvWindow'] the time in milliseconds to wait for a response
+     *
+     * @return array with error message or the order details
+     * @throws \Exception
+     */
+    public function futuresAlgoCancel($algoid, $params = [])
+    {
+        $request = [];
+        if ($algoid) {
+            $request['algoId'] = $algoid;
+        } else if (!isset($params['clientalgoid'])) {
+            throw new \Exception('futuresAlgoCancel(): either algoid or clientalgoid must be set');
+        }
+        // todo: check camel-case or lower-case!!!!
+        return $this->fapiRequest("v1/algoOrder", 'DELETE', array_merge($request, $params), true);
+    }
+
+    /**
      * futuresCancelBatchOrders canceles multiple futures orders
      *
      * $orderIds = ["123456789", "987654321"];
@@ -5229,11 +5255,13 @@ class API
      * futuresCancelOpenOrders cancels all open futures orders for a symbol
      *
      * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Open-Orders
-     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Algo-Open-Orders
      * $orders = $api->futuresCancelOpenOrders("BNBBTC");
      *
      * @param string $symbol (mandatory) market symbol (e.g. ETHUSDT)
-     * @param int    $recvWindow the time in milliseconds to wait for a response
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param bool $params['isAlgo'] true for canceling algo orders
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
      *
      * @return array with error message or the orders details
      * @throws \Exception
@@ -5243,8 +5271,32 @@ class API
         $request = [
             'symbol' => $symbol,
         ];
+        if (isset($params['isAlgo']) && ($params['isAlgo'] === true)) {
+            unset($params['isAlgo']);
+            return $this->fapiRequest("v1/algoOpenOrders", 'DELETE', array_merge($request, $params), true);
+        } else {
+            return $this->fapiRequest("v1/allOpenOrders", 'DELETE', array_merge($request, $params), true);
+        }
+    }
 
-        return $this->fapiRequest("v1/allOpenOrders", 'DELETE', array_merge($request, $params), true);
+    /**
+     * futuresCancelOpenAlgoOrders cancels all open futures algo orders for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Algo-Open-Orders
+     *
+     * $orders = $api->futuresCancelOpenAlgoOrders("BNBBTC");
+     *
+     * @param string $symbol (mandatory) market symbol (e.g. ETHUSDT)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the orders details
+     * @throws \Exception
+     */
+    public function futuresCancelOpenAlgoOrders (string $symbol, array $params = [])
+    {
+        $params['isAlgo'] = true;
+        return $this->futuresCancelOpenOrders($symbol, $params);
     }
 
     /**
