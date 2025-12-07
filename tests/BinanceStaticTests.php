@@ -2189,7 +2189,7 @@ class BinanceStaticTests extends TestCase
 
     }
 
-    public function futuresCancelOpenAlgoOrders()
+    public function testFuturesCancelOpenAlgoOrders()
     {
         try {
             $this->binance->futuresCancelOpenAlgoOrders($this->symbol, [ 'recvWindow' => $this->recvWindow ]);
@@ -2325,6 +2325,29 @@ class BinanceStaticTests extends TestCase
 
     }
 
+    public function testFuturesAllAlgoOrders()
+    {
+        try  {
+            $this->binance->futuresAllAlgoOrders($this->symbol, $this->startTime, $this->endTime, $this->limit, $this->orderId, [ 'recvWindow' => $this->recvWindow ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://fapi.binance.com/fapi/v1/allAlgoOrders?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->startTime, $params['startTime']);
+        $this->assertEquals($this->endTime, $params['endTime']);
+        $this->assertEquals($this->limit, $params['limit']);
+        $this->assertEquals($this->orderId, $params['algoId']);
+        $this->assertEquals($this->recvWindow, $params['recvWindow']);
+
+    }
+
     public function testFuturesOpenOrders()
     {
         try  {
@@ -2334,6 +2357,25 @@ class BinanceStaticTests extends TestCase
 
         }
         $endpoint = "https://fapi.binance.com/fapi/v1/openOrders?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->symbol, $params['symbol']);
+        $this->assertEquals($this->recvWindow, $params['recvWindow']);
+
+    }
+
+    public function testFuturesOpenAlgoOrders()
+    {
+        try  {
+            $this->binance->futuresOpenAlgoOrders($this->symbol, [ 'recvWindow' => $this->recvWindow ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://fapi.binance.com/fapi/v1/openAlgoOrders?";
         $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
 
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
