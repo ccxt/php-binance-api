@@ -1885,6 +1885,30 @@ class BinanceStaticTests extends TestCase
         $this->assertTrue(str_starts_with($params['newClientOrderId'], $this->CONTRACT_ORDER_PREFIX));
     }
 
+    public function testFuturesAlgoOrder()
+    {
+        try {
+            $this->binance->futuresOrder('BUY', 'BTCUSDT', 1, 1000, 'STOP', [
+                'stopPrice' => 900,
+            ]);
+        }
+        catch(\Throwable $e) {
+            print_r($e->getMessage());
+        }
+        $this->assertEquals("https://fapi.binance.com/fapi/v1/algoOrder", self::$capturedUrl);
+
+        parse_str(self::$capturedBody, $params);
+
+        $this->assertEquals("BTCUSDT", $params['symbol']);
+        $this->assertEquals("BUY", $params['side']);
+        $this->assertEquals("STOP", $params['type']);
+        $this->assertEquals(1, $params['quantity']);
+        $this->assertEquals(1000, $params['price']);
+        $this->assertEquals(900, $params['triggerPrice']);
+        $this->assertEquals("CONDITIONAL", $params['algoType']);
+        $this->assertTrue(str_starts_with($params['clientAlgoId'], $this->CONTRACT_ORDER_PREFIX));
+    }
+
     public function testFuturesBuy()
     {
         try  {
