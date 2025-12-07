@@ -4721,7 +4721,7 @@ class API
             echo "warning: price expected string got " . gettype($price) . PHP_EOL;
         }
 
-        if ($type === "LIMIT" || $type === "STOP_LOSS_LIMIT" || $type === "TAKE_PROFIT_LIMIT") {
+        if ($type === "LIMIT" || $type === "STOP_LOSS_LIMIT" || $type === "TAKE_PROFIT_LIMIT" || $type === "STOP" || $type === "TAKE_PROFIT") {
             $request["price"] = $price;
             if (!isset($params['timeInForce'])) {
                 $request['timeInForce'] = 'GTC';
@@ -4804,8 +4804,56 @@ class API
     public function futuresOrder(string $side, string $symbol, $quantity = null, $price = null, string $type = 'LIMIT', array $params = [], $test = false)
     {
         $request = $this->createFuturesOrderRequest($side, $symbol, $quantity, $price, $type, $params);
-        $qstring = ($test === false) ? 'v1/order' : 'v1/order/test';
-        return $this->fapiRequest($qstring, 'POST', $request, true);
+        $isAlgoOrder = $this->isAlgoFuturesOrderType($request['type']);
+        if ($isAlgoOrder) {
+            $algoRequest = $this->createAlgoFuturesOrderRequest($request);
+            return $this->fapiRequest('v1/algoOrder', 'POST', $algoRequest, true);
+        } else {
+            // regular order
+            $qstring = ($test === false) ? 'v1/order' : 'v1/order/test';
+            return $this->fapiRequest($qstring, 'POST', $request, true);
+        }
+    }
+
+    /**
+     * isAlgoFuturesOrderType helper to determine if an order type is an algo order
+     * @param string $type order type
+     * @return bool true if it is an algo order type
+     */
+    protected function isAlgoFuturesOrderType(string $type): bool
+    {
+        $algoOrderTypes = [
+            'STOP',
+            'STOP_MARKET',
+            'TAKE_PROFIT',
+            'TAKE_PROFIT_MARKET',
+            'TRAILING_STOP_MARKET',
+        ];
+        if (in_array($type, $algoOrderTypes)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * createAlgoFuturesOrderRequest
+     * helper for creating the request for algo futures order
+     * @param array $request regular order request
+     * @return array containing the request
+     */
+    protected function createAlgoFuturesOrderRequest(array $request): array
+    {
+        $request['algoType'] = 'CONDITIONAL';
+        if (!isset($request['clientAlgoId'])) {
+            $newClientOrderId = $request['newClientOrderId'];
+            $request['clientAlgoId'] = $newClientOrderId;
+            unset($request['newClientOrderId']);
+        }
+        if (!isset($request['triggerPrice']) && isset($request['stopPrice'])) {
+            $request['triggerPrice'] = $request['stopPrice'];
+            unset($request['stopPrice']);
+        }
+        return $request;
     }
 
     /**
