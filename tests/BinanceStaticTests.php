@@ -2226,6 +2226,25 @@ class BinanceStaticTests extends TestCase
 
     }
 
+    public function testFuturesAlgoOrderStatusByOrderId()
+    {
+        try  {
+            $this->binance->futuresAlgoOrderStatus($this->orderId, null, [ 'recvWindow' => $this->recvWindow ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://fapi.binance.com/fapi/v1/algoOrder?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->orderId, $params['algoId']);
+        $this->assertEquals($this->recvWindow, $params['recvWindow']);
+
+    }
+
     public function testFuturesOrderStatusByClientOrderId()
     {
         try  {
@@ -2242,6 +2261,25 @@ class BinanceStaticTests extends TestCase
 
         $this->assertEquals($this->symbol, $params['symbol']);
         $this->assertEquals($this->origClientOrderId, $params['origClientOrderId']);
+        $this->assertEquals($this->recvWindow, $params['recvWindow']);
+
+    }
+
+    public function testFuturesAlgoOrderStatusByClientOrderId()
+    {
+        try  {
+            $this->binance->futuresAlgoOrderStatus(null, $this->origClientOrderId, [ 'recvWindow' => $this->recvWindow ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://fapi.binance.com/fapi/v1/algoOrder?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->origClientOrderId, $params['clientAlgoId']);
         $this->assertEquals($this->recvWindow, $params['recvWindow']);
 
     }
