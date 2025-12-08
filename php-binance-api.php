@@ -5213,7 +5213,6 @@ class API
         } else if (!isset($params['clientAlgoId'])) {
             throw new \Exception('futuresCancelAlgo(): either algoId or clientAlgoId must be set');
         }
-        // todo: check camel-case or lower-case!!!!
         return $this->fapiRequest("v1/algoOrder", 'DELETE', array_merge($request, $params), true);
     }
 
