@@ -1795,7 +1795,7 @@ class API
             $this->setXMbxUsedWeight1m($header['x-mbx-used-weight-1m']);
         }
         if (isset($json['msg']) && !empty($json['msg'])) {
-            if ($json['msg'] !== 'success' && $url != 'v1/system/status' && $url != 'v3/systemStatus.html' && $url != 'v3/accountStatus.html' && $url != 'v1/allOpenOrders') {
+            if ($json['msg'] !== 'success' && $url != 'v1/system/status' && $url != 'v3/systemStatus.html' && $url != 'v3/accountStatus.html' && $url != 'v1/allOpenOrders' && $url != 'v1/algoOpenOrders') {
                 // should always output error, not only on httpdebug
                 // not outputing errors, hides it from users and ends up with tickets on github
                 throw new \Exception('signedRequest error: '.print_r($output, true));
@@ -5192,10 +5192,10 @@ class API
     }
 
     /**
-     * futuresAlgoCancel cancels a futures order
+     * futuresCancelAlgo cancels a futures order
      *
      * $algoid = "123456789";
-     * $order = $api->futuresCancel($algoid);
+     * $order = $api->futuresCancelAlgo($algoid);
      *
      * @param string $algoid (optional) the algoid to cancel (mandatory if $params['clientalgoid'] is not set)
      * @param array  $params (optional) additional options
@@ -5205,13 +5205,13 @@ class API
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function futuresAlgoCancel($algoid, $params = [])
+    public function futuresCancelAlgo($algoId, $params = [])
     {
         $request = [];
-        if ($algoid) {
-            $request['algoId'] = $algoid;
-        } else if (!isset($params['clientalgoid'])) {
-            throw new \Exception('futuresAlgoCancel(): either algoid or clientalgoid must be set');
+        if ($algoId) {
+            $request['algoId'] = $algoId;
+        } else if (!isset($params['clientAlgoId'])) {
+            throw new \Exception('futuresCancelAlgo(): either algoId or clientAlgoId must be set');
         }
         // todo: check camel-case or lower-case!!!!
         return $this->fapiRequest("v1/algoOrder", 'DELETE', array_merge($request, $params), true);
