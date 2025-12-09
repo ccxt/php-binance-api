@@ -2146,7 +2146,7 @@ class BinanceStaticTests extends TestCase
         $queryString = substr(self::$capturedUrl, strlen($endpoint));
         parse_str($queryString, $params);
 
-        $this->assertEquals($this->orderid, $params['algoId']);
+        $this->assertEquals($this->orderid, $params['algoid']);
 
     }
 
