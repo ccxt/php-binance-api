@@ -5194,12 +5194,14 @@ class API
     /**
      * futuresCancelAlgo cancels a futures order
      *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-Algo-Order
+     *
      * $algoid = "123456789";
      * $order = $api->futuresCancelAlgo($algoid);
      *
-     * @param string $algoid (optional) the algoid to cancel (mandatory if $params['clientalgoid'] is not set)
+     * @param string $algoId (optional) the algoid to cancel (mandatory if $params['clientAlgoId'] is not set)
      * @param array  $params (optional) additional options
-     * - @param string $params['clientalgoid'] original client order id to cancel
+     * - @param string $params['clientAlgoId'] original client order id to cancel
      * - @param int    $params['recvWindow'] the time in milliseconds to wait for a response
      *
      * @return array with error message or the order details
@@ -5209,8 +5211,11 @@ class API
     {
         $request = [];
         if ($algoId) {
-            $request['algoId'] = $algoId;
-        } else if (!isset($params['clientAlgoId'])) {
+            $request['algoid'] = $algoId;
+        } else if (isset($params['clientAlgoId'])) {
+            $request['clientalgoid'] = $params['clientAlgoId'];
+            unset($params['clientAlgoId']);
+        } else if (!isset($params['clientalgoid'])) {
             throw new \Exception('futuresCancelAlgo(): either algoId or clientAlgoId must be set');
         }
         return $this->fapiRequest("v1/algoOrder", 'DELETE', array_merge($request, $params), true);
