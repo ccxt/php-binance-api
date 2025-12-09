@@ -2150,6 +2150,24 @@ class BinanceStaticTests extends TestCase
 
     }
 
+    public function testFuturesCancelAlgoByClientAlgoId()
+    {
+        try  {
+            $this->binance->futuresCancelAlgo(null, [ 'clientAlgoId' => $this->orderid ]);
+
+        } catch (\Throwable $e) {
+
+        }
+        $endpoint = "https://fapi.binance.com/fapi/v1/algoOrder?";
+        $this->assertTrue(str_starts_with(self::$capturedUrl, $endpoint));
+
+        $queryString = substr(self::$capturedUrl, strlen($endpoint));
+        parse_str($queryString, $params);
+
+        $this->assertEquals($this->orderid, $params['clientalgoid']);
+
+    }
+
     public function testFuturesCancelBatchOrdersByOrderIds()
     {
         try  {
