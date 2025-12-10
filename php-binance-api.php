@@ -516,7 +516,7 @@ class API
         ];
         if (!is_null($orderid)) {
             $request["orderId"] = $orderid;
-        } else if (!is_set($params['origClientOrderId'])) {
+        } else if (!isset($params['origClientOrderId'])) {
             throw new Exception("Either orderId or origClientOrderId must be provided");
         }
         return $this->apiRequest("v3/order", "DELETE", array_merge($request, $params), true);
@@ -545,7 +545,7 @@ class API
         ];
         if (!is_null($orderid)) {
             $request["orderId"] = $orderid;
-        } else if (!is_set($params['origClientOrderId'])) {
+        } else if (!isset($params['origClientOrderId'])) {
             throw new Exception("Either orderId or origClientOrderId must be provided");
         }
         return $this->apiRequest("v3/order", "GET", array_merge($request, $params), true);
@@ -1795,7 +1795,7 @@ class API
             $this->setXMbxUsedWeight1m($header['x-mbx-used-weight-1m']);
         }
         if (isset($json['msg']) && !empty($json['msg'])) {
-            if ($json['msg'] !== 'success' && $url != 'v1/system/status' && $url != 'v3/systemStatus.html' && $url != 'v3/accountStatus.html' && $url != 'v1/allOpenOrders') {
+            if ($json['msg'] !== 'success' && $url != 'v1/system/status' && $url != 'v3/systemStatus.html' && $url != 'v3/accountStatus.html' && $url != 'v1/allOpenOrders' && $url != 'v1/algoOpenOrders') {
                 // should always output error, not only on httpdebug
                 // not outputing errors, hides it from users and ends up with tickets on github
                 throw new \Exception('signedRequest error: '.print_r($output, true));
@@ -4721,7 +4721,7 @@ class API
             echo "warning: price expected string got " . gettype($price) . PHP_EOL;
         }
 
-        if ($type === "LIMIT" || $type === "STOP_LOSS_LIMIT" || $type === "TAKE_PROFIT_LIMIT") {
+        if ($type === "LIMIT" || $type === "STOP_LOSS_LIMIT" || $type === "TAKE_PROFIT_LIMIT" || $type === "STOP" || $type === "TAKE_PROFIT") {
             $request["price"] = $price;
             if (!isset($params['timeInForce'])) {
                 $request['timeInForce'] = 'GTC';
@@ -4804,8 +4804,56 @@ class API
     public function futuresOrder(string $side, string $symbol, $quantity = null, $price = null, string $type = 'LIMIT', array $params = [], $test = false)
     {
         $request = $this->createFuturesOrderRequest($side, $symbol, $quantity, $price, $type, $params);
-        $qstring = ($test === false) ? 'v1/order' : 'v1/order/test';
-        return $this->fapiRequest($qstring, 'POST', $request, true);
+        $isAlgoOrder = $this->isAlgoFuturesOrderType($request['type']);
+        if ($isAlgoOrder) {
+            $algoRequest = $this->createAlgoFuturesOrderRequest($request);
+            return $this->fapiRequest('v1/algoOrder', 'POST', $algoRequest, true);
+        } else {
+            // regular order
+            $qstring = ($test === false) ? 'v1/order' : 'v1/order/test';
+            return $this->fapiRequest($qstring, 'POST', $request, true);
+        }
+    }
+
+    /**
+     * isAlgoFuturesOrderType helper to determine if an order type is an algo order
+     * @param string $type order type
+     * @return bool true if it is an algo order type
+     */
+    protected function isAlgoFuturesOrderType(string $type): bool
+    {
+        $algoOrderTypes = [
+            'STOP',
+            'STOP_MARKET',
+            'TAKE_PROFIT',
+            'TAKE_PROFIT_MARKET',
+            'TRAILING_STOP_MARKET',
+        ];
+        if (in_array($type, $algoOrderTypes)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * createAlgoFuturesOrderRequest
+     * helper for creating the request for algo futures order
+     * @param array $request regular order request
+     * @return array containing the request
+     */
+    protected function createAlgoFuturesOrderRequest(array $request): array
+    {
+        $request['algoType'] = 'CONDITIONAL';
+        if (!isset($request['clientAlgoId'])) {
+            $newClientOrderId = $request['newClientOrderId'];
+            $request['clientAlgoId'] = $newClientOrderId;
+            unset($request['newClientOrderId']);
+        }
+        if (!isset($request['triggerPrice']) && isset($request['stopPrice'])) {
+            $request['triggerPrice'] = $request['stopPrice'];
+            unset($request['stopPrice']);
+        }
+        return $request;
     }
 
     /**
@@ -5144,6 +5192,36 @@ class API
     }
 
     /**
+     * futuresCancelAlgo cancels a futures order
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-Algo-Order
+     *
+     * $algoid = "123456789";
+     * $order = $api->futuresCancelAlgo($algoid);
+     *
+     * @param string $algoId (optional) the algoid to cancel (mandatory if $params['clientAlgoId'] is not set)
+     * @param array  $params (optional) additional options
+     * - @param string $params['clientAlgoId'] original client order id to cancel
+     * - @param int    $params['recvWindow'] the time in milliseconds to wait for a response
+     *
+     * @return array with error message or the order details
+     * @throws \Exception
+     */
+    public function futuresCancelAlgo($algoId, $params = [])
+    {
+        $request = [];
+        if ($algoId) {
+            $request['algoid'] = $algoId;
+        } else if (isset($params['clientAlgoId'])) {
+            $request['clientalgoid'] = $params['clientAlgoId'];
+            unset($params['clientAlgoId']);
+        } else if (!isset($params['clientalgoid'])) {
+            throw new \Exception('futuresCancelAlgo(): either algoId or clientAlgoId must be set');
+        }
+        return $this->fapiRequest("v1/algoOrder", 'DELETE', array_merge($request, $params), true);
+    }
+
+    /**
      * futuresCancelBatchOrders canceles multiple futures orders
      *
      * $orderIds = ["123456789", "987654321"];
@@ -5181,11 +5259,13 @@ class API
      * futuresCancelOpenOrders cancels all open futures orders for a symbol
      *
      * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Open-Orders
-     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Algo-Open-Orders
      * $orders = $api->futuresCancelOpenOrders("BNBBTC");
      *
      * @param string $symbol (mandatory) market symbol (e.g. ETHUSDT)
-     * @param int    $recvWindow the time in milliseconds to wait for a response
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param bool $params['isAlgo'] true for canceling algo orders
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
      *
      * @return array with error message or the orders details
      * @throws \Exception
@@ -5195,8 +5275,32 @@ class API
         $request = [
             'symbol' => $symbol,
         ];
+        if (isset($params['isAlgo']) && ($params['isAlgo'] === true)) {
+            unset($params['isAlgo']);
+            return $this->fapiRequest("v1/algoOpenOrders", 'DELETE', array_merge($request, $params), true);
+        } else {
+            return $this->fapiRequest("v1/allOpenOrders", 'DELETE', array_merge($request, $params), true);
+        }
+    }
 
-        return $this->fapiRequest("v1/allOpenOrders", 'DELETE', array_merge($request, $params), true);
+    /**
+     * futuresCancelOpenAlgoOrders cancels all open futures algo orders for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Cancel-All-Algo-Open-Orders
+     *
+     * $orders = $api->futuresCancelOpenAlgoOrders("BNBBTC");
+     *
+     * @param string $symbol (mandatory) market symbol (e.g. ETHUSDT)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the orders details
+     * @throws \Exception
+     */
+    public function futuresCancelOpenAlgoOrders (string $symbol, array $params = [])
+    {
+        $params['isAlgo'] = true;
+        return $this->futuresCancelOpenOrders($symbol, $params);
     }
 
     /**
@@ -5240,7 +5344,7 @@ class API
      * @return array with error message or the order details
      * @throws \Exception
      */
-    public function futuresOrderStatus(string $symbol, $orderId = null, $origClientOrderId = null, array $params = [])
+    public function futuresOrderStatus(string $symbol, $orderId = null, $origClientOrderId = null, array $params = [], )
     {
         $request = [
             'symbol' => $symbol,
@@ -5257,6 +5361,35 @@ class API
     }
 
     /**
+     * futuresAlgoOrderStatus gets the details of a futures algo order
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Query-Algo-Order
+     *
+     * $order = $api->futuresAlgoOrderStatus("123456789");
+     *
+     * @param string $algoId (optional) order id to get the response for (mandatory if clientAlgoId is not set)
+     * @param string $clientAlgoId (optional) original client order id to get the response for (mandatory if algoId is not set)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the order details
+     * @throws \Exception
+     */
+    public function futuresAlgoOrderStatus($algoId = null, $clientAlgoId = null, array $params = [])
+    {
+        $request = [];
+        if ($algoId) {
+            $request['algoId'] = $algoId;
+        } else if ($clientAlgoId) {
+            $request['clientAlgoId'] = $clientAlgoId;
+        } else {
+            throw new \Exception('futuresAlgoOrderStatus(): either algoId or clientAlgoId must be set');
+        }
+
+        return $this->fapiRequest("v1/algoOrder", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
      * futuresAllOrders gets all orders for a symbol
      * query time period must be less then 7 days (default as the recent 7 days)
      *
@@ -5270,6 +5403,7 @@ class API
      * @param int    $limit (optional) limit the amount of orders (default 500, max 1000)
      * @param string $orderId (optional) order id to get the response from (if is set it will get orders >= that orderId)
      * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param bool $isAlgo (optional) true for algo orders
      * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
      *
      * @return array with error message or the orders details
@@ -5289,11 +5423,42 @@ class API
         if ($limit) {
             $request['limit'] = $limit;
         }
-        if ($orderId) {
-            $request['orderId'] = $orderId;
+        if (isset($params['isAlgo']) && $params['isAlgo'] === true) {
+            unset($params['isAlgo']);
+            if ($orderId) {
+                $request['algoId'] = $orderId;
+            }
+            return $this->fapiRequest("v1/allAlgoOrders", 'GET', array_merge($request, $params), true);
+        } else {
+            if ($orderId) {
+                $request['orderId'] = $orderId;
+            }
+            return $this->fapiRequest("v1/allOrders", 'GET', array_merge($request, $params), true);
         }
+    }
 
-        return $this->fapiRequest("v1/allOrders", 'GET', array_merge($request, $params), true);
+    /**
+     * futuresAllAlgoOrders gets all open orders for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Query-All-Algo-Orders
+     *
+     * $orders = $api->futuresAllAlgoOrders("BNBBTC");
+     *
+     * @param string $symbol (mandatory) market symbol (e.g. ETHUSDT)
+     * @param int    $startTime (optional) timestamp in ms to get orders from INCLUSIVE
+     * @param int    $endTime (optional) timestamp in ms to get orders until INCLUSIVE
+     * @param int    $limit (optional) limit the amount of orders (default 500, max 1000)
+     * @param string $algoId (optional) order id to get the response from (if is set it will get orders >= that orderId)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the orders details
+     * @throws \Exception
+     */
+    public function futuresAllAlgoOrders(string $symbol, $startTime = null, $endTime = null, $limit = null, $algoId = null, array $params = [])
+    {
+        $params['isAlgo'] = true;
+        return $this->futuresAllOrders($symbol, $startTime, $endTime, $limit, $algoId, $params);
     }
 
     /**
@@ -5306,6 +5471,7 @@ class API
      *
      * @param string $symbol (optional) market symbol (e.g. ETHUSDT)
      * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param bool $params['isAlgo'] (optional) true for getting algo orders
      * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
      *
      * @return array with error message or the orders details
@@ -5317,8 +5483,32 @@ class API
         if ($symbol) {
             $request['symbol'] = $symbol;
         }
-
+        if (isset($params['isAlgo']) && ($params['isAlgo'] === true)) {
+            unset($params['algo']);
+            return $this->fapiRequest("v1/openAlgoOrders", 'GET', array_merge($request, $params), true);
+        }
         return $this->fapiRequest("v1/openOrders", 'GET', array_merge($request, $params), true);
+    }
+
+    /**
+     * futuresOpenAlgoOrders gets all open orders for a symbol
+     *
+     * @link https://developers.binance.com/docs/derivatives/usds-margined-futures/trade/rest-api/Current-All-Algo-Open-Orders
+     *
+     * $orders = $api->futuresOpenAlgoOrders();
+     * $orders = $api->futuresOpenAlgoOrders("BNBBTC");
+     *
+     * @param string $symbol (optional) market symbol (e.g. ETHUSDT)
+     * @param array  $params (optional)  An array of additional parameters that the API endpoint allows
+     * - @param int  $params['recvWindow'] (optional) the time in milliseconds to wait for the response
+     *
+     * @return array with error message or the orders details
+     * @throws \Exception
+     */
+    public function futuresOpenAlgoOrders($symbol = null, array $params = [])
+    {
+        $params['isAlgo'] = true;
+        return $this->futuresOpenOrders($symbol, $params);
     }
 
     /**
