@@ -1698,10 +1698,6 @@ class API
             $base = $this->bapi;
         }
 
-        print_r(PHP_EOL . '-----------------------------------------' . PHP_EOL);
-        print_r($base . $url);
-        print_r(PHP_EOL . '-----------------------------------------' . PHP_EOL);
-
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_VERBOSE, $this->httpDebug);
 
