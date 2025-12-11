@@ -31,21 +31,28 @@ class API
 {
     protected $base = 'https://api.binance.com/api/'; // /< REST endpoint for the currency exchange
     protected $baseTestnet = 'https://testnet.binance.vision/api/'; // /< Testnet REST endpoint for the currency exchange
+    protected $baseTestnetBackup = 'https://testnet.binance.vision/api/';
+    protected $baseDemo = 'https://demo-api.binance.com/api/'; // /< Demo REST endpoint for the currency exchange
     protected $wapi = 'https://api.binance.com/wapi/'; // /< REST endpoint for the withdrawals
     protected $sapi = 'https://api.binance.com/sapi/'; // /< REST endpoint for the supporting network API
     protected $fapi = 'https://fapi.binance.com/fapi/'; // /< REST endpoint for the futures API
     protected $fapiData = 'https://fapi.binance.com/futures/data/'; // /< REST endpoint for the futures API
     protected $fapiTestnet = 'https://testnet.binancefuture.com/fapi/'; // /< Testnet REST endpoint for the futures API
+    protected $fapiTestnetBackup = 'https://testnet.binancefuture.com/fapi/';
+    protected $fapiDemo = 'https://demo-fapi.binance.com/fapi/'; // /< Demo REST endpoint for the futures API
     protected $dapi = 'https://dapi.binance.com/dapi/'; // /< REST endpoint for the delivery API
     protected $dapiData = 'https://dapi.binance.com/futures/data/'; // /< REST endpoint for the delivery API
     protected $dapiTestnet = 'https://testnet.binancefuture.com/dapi/'; // /< Testnet REST endpoint for the delivery API
+    protected $dapiTestnetBackup = 'https://testnet.binancefuture.com/dapi/';
+    protected $dapiDemo = 'https://demo-dapi.binance.com/dapi/'; // /< Demo REST endpoint for the delivery API
     protected $papi = 'https://papi.binance.com/papi/'; // /< REST endpoint for the options API
     protected $bapi = 'https://www.binance.com/bapi/'; // /< REST endpoint for the internal Binance API
     protected $stream = 'wss://stream.binance.com:9443/ws/'; // /< Endpoint for establishing websocket connections
     protected $streamTestnet = 'wss://testnet.binance.vision/ws/'; // /< Testnet endpoint for establishing websocket connections
     protected $api_key; // /< API key that you created in the binance website member area
     protected $api_secret; // /< API secret that was given to you when you created the api key
-    protected $useTestnet = false; // /< Enable/disable testnet (https://testnet.binance.vision/)
+    protected $useTestnet = false; // /< Enable/disable testnet
+    protected $useDemoForTestnet = false; // /< Use demo endpoints for testnet
     protected $depthCache = []; // /< Websockets depth cache
     protected $depthQueue = []; // /< Websockets depth queue
     protected $chartQueue = []; // /< Websockets chart queue
@@ -113,6 +120,23 @@ class API
             default:
                 echo 'Please see valid constructors here: https://github.com/jaggedsoft/php-binance-api/blob/master/examples/constructor.php';
         }
+    }
+
+    /**
+     *
+     */
+    public function enableDemoTrading(?bool $enable = true)
+    {
+        if ($enable) {
+            $this->baseTestnet = $this->baseDemo;
+            $this->fapiTestnet = $this->fapiDemo;
+            $this->dapiTestnet = $this->dapiDemo;
+        } else {
+            $this->baseTestnet = $this->baseTestnetBackup;
+            $this->fapiTestnet = $this->fapiTestnetBackup;
+            $this->dapiTestnet = $this->dapiTestnetBackup;
+        }
+        $this->useDemoForTestnet = $enable;
     }
 
     /**
@@ -1673,6 +1697,10 @@ class API
             unset($params['bapi']);
             $base = $this->bapi;
         }
+
+        print_r(PHP_EOL . '-----------------------------------------' . PHP_EOL);
+        print_r($base . $url);
+        print_r(PHP_EOL . '-----------------------------------------' . PHP_EOL);
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_VERBOSE, $this->httpDebug);
