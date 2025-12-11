@@ -123,7 +123,9 @@ class API
     }
 
     /**
+     * enableDemoTrading - Enable or disable demo trading endpoints for testnet
      *
+     * @param bool $enable true to enable demo trading endpoints, false to disable
      */
     public function enableDemoTrading(?bool $enable = true)
     {
