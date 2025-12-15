@@ -52,7 +52,7 @@ class API
     protected $api_key; // /< API key that you created in the binance website member area
     protected $api_secret; // /< API secret that was given to you when you created the api key
     protected $useTestnet = false; // /< Enable/disable testnet
-    protected $useDemoForTestnet = false; // /< Use demo endpoints for testnet
+    protected $useDemo = false; // /< Use demo endpoints for testnet
     protected $depthCache = []; // /< Websockets depth cache
     protected $depthQueue = []; // /< Websockets depth queue
     protected $chartQueue = []; // /< Websockets chart queue
@@ -91,6 +91,7 @@ class API
      * 1 argument - file to load config from
      * 2 arguments - api key and api secret
      * 3 arguments - api key, api secret and use testnet flag
+     * 4 arguments - api key, api secret, use testnet flag and use demo for testnet flag
      *
      * @return null
      */
@@ -117,6 +118,13 @@ class API
                 $this->api_secret = $param[1];
                 $this->useTestnet = (bool)$param[2];
                 break;
+            case 4:
+                $useDemo = (bool)$param[3];
+                $this->api_key = $param[0];
+                $this->api_secret = $param[1];
+                $this->useTestnet = (bool)$param[2];
+                $this->enableDemoTrading($useDemo);
+                break;
             default:
                 echo 'Please see valid constructors here: https://github.com/jaggedsoft/php-binance-api/blob/master/examples/constructor.php';
         }
@@ -130,15 +138,25 @@ class API
     public function enableDemoTrading(?bool $enable = true)
     {
         if ($enable) {
-            $this->baseTestnet = $this->baseDemo;
-            $this->fapiTestnet = $this->fapiDemo;
-            $this->dapiTestnet = $this->dapiDemo;
+            $this->setDemoEndpoints();
         } else {
-            $this->baseTestnet = $this->baseTestnetBackup;
-            $this->fapiTestnet = $this->fapiTestnetBackup;
-            $this->dapiTestnet = $this->dapiTestnetBackup;
+            $this->setTestnetEndpoints();
         }
-        $this->useDemoForTestnet = $enable;
+        $this->useDemo = $enable;
+    }
+
+    protected function setDemoEndpoints()
+    {
+        $this->baseTestnet = $this->baseDemo;
+        $this->fapiTestnet = $this->fapiDemo;
+        $this->dapiTestnet = $this->dapiDemo;
+    }
+
+    protected function setTestnetEndpoints()
+    {
+        $this->baseTestnet = $this->baseTestnetBackup;
+        $this->fapiTestnet = $this->fapiTestnetBackup;
+        $this->dapiTestnet = $this->dapiTestnetBackup;
     }
 
     /**
@@ -190,6 +208,7 @@ class API
         $this->api_key = isset($contents['api-key']) ? $contents['api-key'] : "";
         $this->api_secret = isset($contents['api-secret']) ? $contents['api-secret'] : "";
         $this->useTestnet = isset($contents['use-testnet']) ? (bool)$contents['use-testnet'] : false;
+        $this->useDemo = isset($contents['use-demo']) ? (bool)$contents['use-demo'] : false;
     }
 
     /**
