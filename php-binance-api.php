@@ -30,20 +30,20 @@ if (version_compare(phpversion(), '7.0', '<=')) {
 class API
 {
     protected $base = 'https://api.binance.com/api/'; // /< REST endpoint for the currency exchange
-    protected $baseTestnet = 'https://testnet.binance.vision/api/'; // /< Testnet REST endpoint for the currency exchange
-    protected $baseTestnetBackup = 'https://testnet.binance.vision/api/';
+    protected $baseTestnet = 'https://demo-api.binance.com/api/'; // /< REST endpoint for the test currency exchange
+    protected $baseOldTestnet = 'https://testnet.binance.vision/api/'; // /< old Testnet REST endpoint for the currency exchange (deprecated)
     protected $baseDemo = 'https://demo-api.binance.com/api/'; // /< Demo REST endpoint for the currency exchange
     protected $wapi = 'https://api.binance.com/wapi/'; // /< REST endpoint for the withdrawals
     protected $sapi = 'https://api.binance.com/sapi/'; // /< REST endpoint for the supporting network API
     protected $fapi = 'https://fapi.binance.com/fapi/'; // /< REST endpoint for the futures API
     protected $fapiData = 'https://fapi.binance.com/futures/data/'; // /< REST endpoint for the futures API
-    protected $fapiTestnet = 'https://testnet.binancefuture.com/fapi/'; // /< Testnet REST endpoint for the futures API
-    protected $fapiTestnetBackup = 'https://testnet.binancefuture.com/fapi/';
+    protected $fapiTestnet = 'https://demo-fapi.binance.com/fapi/'; // /< REST endpoint for the test futures API
+    protected $fapiOldTestnet = 'https://testnet.binancefuture.com/fapi/'; // /< old Testnet REST endpoint for the futures API (deprecated)
     protected $fapiDemo = 'https://demo-fapi.binance.com/fapi/'; // /< Demo REST endpoint for the futures API
     protected $dapi = 'https://dapi.binance.com/dapi/'; // /< REST endpoint for the delivery API
     protected $dapiData = 'https://dapi.binance.com/futures/data/'; // /< REST endpoint for the delivery API
-    protected $dapiTestnet = 'https://testnet.binancefuture.com/dapi/'; // /< Testnet REST endpoint for the delivery API
-    protected $dapiTestnetBackup = 'https://testnet.binancefuture.com/dapi/';
+    protected $dapiTestnet = 'https://demo-dapi.binance.com/dapi/'; // /< REST endpoint for the test delivery API
+    protected $dapiOldTestnet = 'https://testnet.binancefuture.com/dapi/'; // /< Old Testnet REST endpoint for the delivery API (deprecated)
     protected $dapiDemo = 'https://demo-dapi.binance.com/dapi/'; // /< Demo REST endpoint for the delivery API
     protected $papi = 'https://papi.binance.com/papi/'; // /< REST endpoint for the options API
     protected $bapi = 'https://www.binance.com/bapi/'; // /< REST endpoint for the internal Binance API
@@ -51,8 +51,8 @@ class API
     protected $streamTestnet = 'wss://testnet.binance.vision/ws/'; // /< Testnet endpoint for establishing websocket connections
     protected $api_key; // /< API key that you created in the binance website member area
     protected $api_secret; // /< API secret that was given to you when you created the api key
-    protected $useTestnet = false; // /< Enable/disable testnet
-    protected $useDemo = false; // /< Use demo endpoints for testnet
+    protected $useTestnet = false; // /< Enable/disable test url
+    protected $useOldTestnet = false; // /< Enable/disable old testnet url
     protected $depthCache = []; // /< Websockets depth cache
     protected $depthQueue = []; // /< Websockets depth queue
     protected $chartQueue = []; // /< Websockets chart queue
@@ -91,7 +91,6 @@ class API
      * 1 argument - file to load config from
      * 2 arguments - api key and api secret
      * 3 arguments - api key, api secret and use testnet flag
-     * 4 arguments - api key, api secret, use testnet flag and use demo for testnet flag
      *
      * @return null
      */
@@ -118,13 +117,6 @@ class API
                 $this->api_secret = $param[1];
                 $this->useTestnet = (bool)$param[2];
                 break;
-            case 4:
-                $useDemo = (bool)$param[3];
-                $this->api_key = $param[0];
-                $this->api_secret = $param[1];
-                $this->useTestnet = (bool)$param[2];
-                $this->enableDemoTrading($useDemo);
-                break;
             default:
                 echo 'Please see valid constructors here: https://github.com/jaggedsoft/php-binance-api/blob/master/examples/constructor.php';
         }
@@ -138,25 +130,38 @@ class API
     public function enableDemoTrading(?bool $enable = true)
     {
         if ($enable) {
-            $this->setDemoEndpoints();
+            $this->setDemoForTestnet();
         } else {
-            $this->setTestnetEndpoints();
+            $this->setOldUrlForTestnet();
         }
-        $this->useDemo = $enable;
     }
 
-    protected function setDemoEndpoints()
+    /**
+     * enableOldTestnetTrading - Enable or disable old testnet trading endpoints for testnet
+     *
+     * @param bool $enable true to enable old testnet trading endpoints, false to disable
+     */
+    public function enableOldTestnetTrading(?bool $enable = true)
+    {
+        if ($enable) {
+            $this->setOldUrlForTestnet();
+        } else {
+            $this->setDemoForTestnet();
+        }
+    }
+
+    protected function setDemoForTestnet()
     {
         $this->baseTestnet = $this->baseDemo;
         $this->fapiTestnet = $this->fapiDemo;
         $this->dapiTestnet = $this->dapiDemo;
     }
 
-    protected function setTestnetEndpoints()
+    protected function setOldUrlForTestnet()
     {
-        $this->baseTestnet = $this->baseTestnetBackup;
-        $this->fapiTestnet = $this->fapiTestnetBackup;
-        $this->dapiTestnet = $this->dapiTestnetBackup;
+        $this->baseTestnet = $this->baseOldTestnet;
+        $this->fapiTestnet = $this->fapiOldTestnet;
+        $this->dapiTestnet = $this->dapiOldTestnet;
     }
 
     /**
@@ -208,7 +213,7 @@ class API
         $this->api_key = isset($contents['api-key']) ? $contents['api-key'] : "";
         $this->api_secret = isset($contents['api-secret']) ? $contents['api-secret'] : "";
         $this->useTestnet = isset($contents['use-testnet']) ? (bool)$contents['use-testnet'] : false;
-        $this->useDemo = isset($contents['use-demo']) ? (bool)$contents['use-demo'] : false;
+        $this->useTestnet = isset($contents['use-demo']) ? (bool)$contents['use-demo'] : false;
     }
 
     /**
