@@ -607,7 +607,7 @@ class API
      * @return array with error message or array of orderDetails array
      * @throws \Exception
      */
-    public function orders(string $symbol, ?int $limit = null, int $fromOrderId = null, array $params = [])
+    public function orders(string $symbol, ?int $limit = null, ?int $fromOrderId = null, array $params = [])
     {
         $request = [
             "symbol" => $symbol,
@@ -2058,7 +2058,7 @@ class API
      * returns array containing the response
      * @throws \Exception
      */
-    public function replaceOrder(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", ?string $cancelOrderId = null, string $cancelOrigClientOrderId = null, bool $allowFailure = null, string $cancelRestrictions = null, string $orderRateLimitExceededMode = null, array $params = [])
+    public function replaceOrder(string $side, string $symbol, $quantity, $price, string $type = "LIMIT", ?string $cancelOrderId = null, ?string $cancelOrigClientOrderId = null, ?bool $allowFailure = null, ?string $cancelRestrictions = null, ?string $orderRateLimitExceededMode = null, array $params = [])
     {
         $request = $this->createSpotOrderRequest($side, $symbol, $quantity, $price, $type, $params);
         if (!is_null($cancelOrderId)) {
