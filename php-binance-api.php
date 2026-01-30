@@ -1316,7 +1316,7 @@ class API
      * @return array with error message or array of prevDay change
      * @throws \Exception
      */
-    public function rollingWindowPriceChange(?string $symbol = null, array $symbols = null, string $windowSize = null, array $params = [])
+    public function rollingWindowPriceChange(?string $symbol = null, ?array $symbols = null, ?string $windowSize = null, array $params = [])
     {
         $request = [];
         if (!is_null($symbol) && is_string($symbol)) {
