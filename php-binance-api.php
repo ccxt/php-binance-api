@@ -41,7 +41,7 @@ class API
     protected $dapiTestnet = 'https://testnet.binancefuture.com/dapi/'; // /< Testnet REST endpoint for the delivery API
     protected $papi = 'https://papi.binance.com/papi/'; // /< REST endpoint for the options API
     protected $bapi = 'https://www.binance.com/bapi/'; // /< REST endpoint for the internal Binance API
-    protected $stream = 'wss://stream.binance.com:9443/ws/'; // /< Endpoint for establishing websocket connections
+    protected $stream = 'wss://stream.binance.com:443/ws/'; // /< Endpoint for establishing websocket connections
     protected $streamTestnet = 'wss://testnet.binance.vision/ws/'; // /< Testnet endpoint for establishing websocket connections
     protected $api_key; // /< API key that you created in the binance website member area
     protected $api_secret; // /< API secret that was given to you when you created the api key
