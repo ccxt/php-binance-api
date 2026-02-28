@@ -2315,17 +2315,17 @@ class API
     {
         $output = [];
         foreach ($ticks as $tick) {
-            list($openTime, $open, $high, $low, $close, $assetVolume, $closeTime, $baseVolume, $trades, $assetBuyVolume, $takerBuyVolume, $ignored) = $tick;
+            list($openTime, $open, $high, $low, $close, $assetVolume, $closeTime, $quoteVolume, $trades, $assetBuyVolume, $takerBuyVolume, $ignored) = $tick;
             $output[$openTime] = [
                 "open" => $open,
                 "high" => $high,
                 "low" => $low,
                 "close" => $close,
-                "volume" => $baseVolume,
+                "volume" => $assetVolume,
                 "openTime" => $openTime,
                 "closeTime" => $closeTime,
                 "assetVolume" => $assetVolume,
-                "baseVolume" => $baseVolume,
+                "quoteVolume" => $quoteVolume,
                 "trades" => $trades,
                 "assetBuyVolume" => $assetBuyVolume,
                 "takerBuyVolume" => $takerBuyVolume,
