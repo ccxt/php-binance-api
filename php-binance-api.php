@@ -6650,4 +6650,44 @@ class API
         }
         return $this->fapiRequest("v1/convert/orderStatus", 'GET', array_merge($request, $params), true);
     }
+
+    /**
+    * payHistory - get Binance Pay transactions.
+    *
+    * @property int $limit
+    *
+    * @return array containing the response
+    * @throws \Exception
+    */
+    public function payHistory($limit)
+    {
+        $opt = [
+            'sapi'       => true,
+            'limit' => $limit
+        ];
+      
+        return $this->httpRequest("v1/pay/transactions", 'GET', $opt, true);
+    }
+
+    /**
+    * transfer - transfer coins from wallet to another.
+    *
+    * @property string $asset
+    * @property float $amount
+    * @property string $type (ex: FUNDING_MAIN: funding to mail wallet, MAIN_FUNDING: main to funding wallet)
+    *
+    * @return array containing the response
+    * @throws \Exception
+    */
+    public function transfer($asset, $amount, $type)
+    {
+        $opt = [
+            'sapi'  =>  true,
+            'type'  => $type,
+            'asset' =>  $asset,
+            'amount' => $amount,
+        ];
+      
+        return $this->httpRequest("v1/asset/transfer", 'POST', $opt, true);
+    }
 }
