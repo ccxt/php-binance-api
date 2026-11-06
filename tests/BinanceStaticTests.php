@@ -1249,17 +1249,20 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $this->assertEquals("https://api.binance.com/api/v3/order/oco", self::$capturedUrl);
+        $this->assertEquals("https://api.binance.com/api/v3/orderList/oco", self::$capturedUrl);
 
         parse_str(self::$capturedBody, $params);
 
+        // side is BUY: the LIMIT_MAKER leg sits below the market price, the stop leg above
         $this->assertEquals($this->side, $params['side']);
         $this->assertEquals($this->symbol, $params['symbol']);
         $this->assertEquals($this->quantity, $params['quantity']);
-        $this->assertEquals($this->price, $params['price']);
-        $this->assertEquals($this->stopprice, $params['stopPrice']);
-        $this->assertEquals($this->stoplimitprice, $params['stopLimitPrice']);
-        $this->assertEquals('GTC', $params['stopLimitTimeInForce']);
+        $this->assertEquals('LIMIT_MAKER', $params['belowType']);
+        $this->assertEquals($this->price, $params['belowPrice']);
+        $this->assertEquals('STOP_LOSS_LIMIT', $params['aboveType']);
+        $this->assertEquals($this->stopprice, $params['aboveStopPrice']);
+        $this->assertEquals($this->stoplimitprice, $params['abovePrice']);
+        $this->assertEquals('GTC', $params['aboveTimeInForce']);
     }
 
     public function testSpotAvgPrice()
@@ -2628,11 +2631,11 @@ class BinanceStaticTests extends TestCase
         } catch (\Throwable $e) {
 
         }
-        $this->assertEquals("https://fapi.binance.com/fapi/v1/multiAssetsMarginMode", self::$capturedUrl);
+        $this->assertEquals("https://fapi.binance.com/fapi/v1/multiAssetsMargin", self::$capturedUrl);
 
         parse_str(self::$capturedBody, $params);
 
-        $this->assertEquals($this->multiAssetsMarginMode, $params['multiAssetsMarginMode']);
+        $this->assertEquals('true', $params['multiAssetsMargin']);
         $this->assertEquals($this->recvWindow, $params['recvWindow']);
     }
 
