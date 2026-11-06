@@ -1716,6 +1716,13 @@ class API
         // params so buildquery string and append to url
         elseif (count($params) > 0) {
             $this->curl_set_url($curl, $base . $url . '?' . $query);
+            // USER_STREAM and MARKET_DATA endpoints need the api key without a signature,
+            // so send it on every unsigned request when available
+            if (!empty($this->api_key)) {
+                curl_setopt($curl, CURLOPT_HTTPHEADER, array(
+                    'X-MBX-APIKEY: ' . $this->api_key,
+                ));
+            }
         }
         // no params so just the base url
         else {
@@ -3679,7 +3686,7 @@ class API
     /**
      * ocoOrder - Create a new OCO order
      *
-     * @link https://binance-docs.github.io/apidocs/spot/en/#new-oco-trade
+     * @link https://developers.binance.com/docs/binance-spot-api-docs/rest-api/trading-endpoints#new-order-list---oco-trade
      *
      * @property int $weight 1
      *
@@ -3709,36 +3716,56 @@ class API
             $request['quantity'] = $quantity;
         }
 
+        // POST v3/order/oco was removed by Binance; v3/orderList/oco expects the two legs
+        // as above*/below* parameters: the LIMIT_MAKER leg sits above the market price for
+        // SELL and below it for BUY, the stop leg is always on the opposite side
+        $isSell = strtoupper($side) === 'SELL';
+        $limitPrefix = $isSell ? 'above' : 'below';
+        $stopPrefix = $isSell ? 'below' : 'above';
+
         if (is_numeric($price) === false) {
             $error = "Parameter price expected numeric for ' $side . ' ' . $symbol .', got " . gettype($price);
             trigger_error($error, E_USER_ERROR);
         } else {
-            $request['price'] = $price;
+            $request[$limitPrefix . 'Type'] = 'LIMIT_MAKER';
+            $request[$limitPrefix . 'Price'] = $price;
         }
 
         if (is_numeric($stopprice) === false) {
             $error = "Parameter stopprice expected numeric for ' $side . ' ' . $symbol .', got " . gettype($stopprice);
             trigger_error($error, E_USER_ERROR);
         } else {
-            $request['stopPrice'] = $stopprice;
+            $request[$stopPrefix . 'StopPrice'] = $stopprice;
         }
 
         if (is_null($stoplimitprice) === false && empty($stoplimitprice) === false) {
-            $request['stopLimitPrice'] = $stoplimitprice;
+            $request[$stopPrefix . 'Type'] = 'STOP_LOSS_LIMIT';
+            $request[$stopPrefix . 'Price'] = $stoplimitprice;
             if ( ($stoplimittimeinforce == 'FOK') || ($stoplimittimeinforce == 'IOC') ) {
-                $request['stopLimitTimeInForce'] = $stoplimittimeinforce;
+                $request[$stopPrefix . 'TimeInForce'] = $stoplimittimeinforce;
             } else {
-                $request['stopLimitTimeInForce'] = 'GTC'; // `Good 'till cancel`. Needed if flag `stopLimitPrice` used.
+                $request[$stopPrefix . 'TimeInForce'] = 'GTC'; // `Good 'till cancel`. Needed if flag `stopLimitPrice` used.
+            }
+        } else {
+            $request[$stopPrefix . 'Type'] = 'STOP_LOSS';
+        }
+
+        // Remap legacy order/oco flags to their orderList/oco equivalents;
+        // anything else in $params (listClientOrderId, newOrderRespType, above*/below* flags) passes through
+        $legacyFlags = array(
+            'icebergQty' => $limitPrefix . 'IcebergQty',
+            'stopIcebergQty' => $stopPrefix . 'IcebergQty',
+            'limitClientOrderId' => $limitPrefix . 'ClientOrderId',
+            'stopClientOrderId' => $stopPrefix . 'ClientOrderId',
+        );
+        foreach ($legacyFlags as $legacyFlag => $newFlag) {
+            if ( isset($params[$legacyFlag]) && !empty($params[$legacyFlag]) ) {
+                $request[$newFlag] = $params[$legacyFlag];
+                unset($params[$legacyFlag]);
             }
         }
 
-        // Check other flags
-        foreach (array('icebergQty','stopIcebergQty','listClientOrderId','limitClientOrderId','stopClientOrderId','newOrderRespType') as $flag) {
-            if ( isset($params[$flag]) && !empty($params[$flag]) )
-                $request[$flag] = $params[$flag];
-        }
-
-        return $this->apiRequest("v3/order/oco", "POST", $request, true);
+        return $this->apiRequest("v3/orderList/oco", "POST", array_merge($request, $params), true);
     }
 
     /**
@@ -3784,6 +3811,8 @@ class API
     /**
     * bswapQuote - Request a quote for swap of quote asset (selling) or base asset (buying), essentially price/exchange rates.
     *
+    * @deprecated Binance Liquid Swap (BSwap) was decommissioned by Binance in 2023; the endpoint no longer works
+    *
     * @property int $weight 2
     *
     * @param string $baseAsset  (mandatory) e.g. ETH
@@ -3794,6 +3823,7 @@ class API
     * @throws \Exception
     */
     public function bswapQuote($baseAsset, $quoteAsset, $quoteQty, array $params = []) {
+        trigger_error('Deprecated - Binance Liquid Swap (BSwap) was decommissioned by Binance in 2023, the endpoint no longer works.', E_USER_DEPRECATED);
         $request = [
             'quoteAsset' => $quoteAsset,
             'baseAsset'  => $baseAsset,
@@ -5779,10 +5809,10 @@ class API
     public function futuresSetMultiAssetsMarginMode(bool $multiAssetsMarginMode, array $params = [])
     {
         $request = [
-            'multiAssetsMarginMode' => $multiAssetsMarginMode ? 'true' : 'false',
+            'multiAssetsMargin' => $multiAssetsMarginMode ? 'true' : 'false',
         ];
 
-        return $this->fapiRequest("v1/multiAssetsMarginMode", 'POST', array_merge($request, $params), true);
+        return $this->fapiRequest("v1/multiAssetsMargin", 'POST', array_merge($request, $params), true);
     }
 
     /**
@@ -6325,7 +6355,7 @@ class API
      * futuresDownloadId
      * helper for other metods for getting download id
      */
-    protected function futuresDownloadId($startTime, $endTime, ?array $params = null, string $url = '')
+    protected function futuresDownloadId($startTime, $endTime, array $params = [], string $url = '')
     {
         $request = [
             'startTime' => $startTime,
@@ -6339,7 +6369,7 @@ class API
      * futuresDownloadLinkByDownloadId
      * helper for other metods for getting download link by download id
      */
-    protected function futuresDownloadLinkByDownloadId(string $downloadId, ?array $params = null, string $url = '')
+    protected function futuresDownloadLinkByDownloadId(string $downloadId, array $params = [], string $url = '')
     {
         $request = [
             'downloadId' => $downloadId,
